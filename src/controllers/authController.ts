@@ -1,0 +1,253 @@
+import { Request, Response } from 'express';
+import { validationResult } from 'express-validator';
+import userModel from '../models/userModel';
+import { generateTokens } from '../utils/jwt';
+import { AuthRequest } from '../middleware/authMiddleware';
+
+export const register = async (req: Request, res: Response) => {
+    try {
+        // Validate request
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { email, password, firstName, lastName, phone } = req.body;
+
+        // Check if user exists
+        const existingUser = await userModel.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
+
+        // Create user
+        const user = new userModel({
+            email,
+            password,
+            firstName,
+            lastName,
+            phone,
+        });
+
+        await user.save();
+
+        // Generate tokens
+        const tokens = generateTokens({
+            userId: user.userId,
+            email: user.email,
+            role: user.role,
+        });
+
+        // Remove password from response
+        const userResponse = user.toObject();
+        delete userResponse.password;
+
+        res.status(201).json({
+            ...tokens,
+            user: userResponse,
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const login = async (req: Request, res: Response) => {
+    try {
+        // Validate request
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { email, password } = req.body;
+
+        // Find user
+        const user = await userModel.findOne({ email });
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        // Check password
+        const isPasswordValid = await user.comparePassword(password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        // Update last login
+        user.lastLogin = new Date();
+        await user.save();
+
+        // Generate tokens
+        const tokens = generateTokens({
+            userId: user.userId,
+            email: user.email,
+            role: user.role,
+        });
+
+        // Remove password from response
+        const userResponse = user.toObject();
+        delete userResponse.password;
+
+        res.json({
+            ...tokens,
+            user: userResponse,
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const logout = async (req: AuthRequest, res: Response) => {
+    try {
+        // In a real application, you might want to blacklist the token
+        res.json({ message: 'Logged out successfully' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const refreshToken = async (req: Request, res: Response) => {
+    try {
+        const { refreshToken } = req.body;
+
+        if (!refreshToken) {
+            return res.status(400).json({ message: 'Refresh token required' });
+        }
+
+        const decoded = verifyToken(refreshToken, true);
+        if (!decoded) {
+            return res.status(401).json({ message: 'Invalid refresh token' });
+        }
+
+        const user = await userModel.findOne({ userId: decoded.userId });
+        if (!user) {
+            return res.status(401).json({ message: 'User not found' });
+        }
+
+        // Generate new tokens
+        const tokens = generateTokens({
+            userId: user.userId,
+            email: user.email,
+            role: user.role,
+        });
+
+        res.json(tokens);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const getProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const user = await userModel.findOne({ userId: req.user?.userId })
+            .select('-password');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json(user);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const { firstName, lastName, phone, skills, experience } = req.body;
+        const user = req.user;
+
+        const updatedUser = await userModel.findOneAndUpdate(
+            { userId: user?.userId },
+            {
+                firstName,
+                lastName,
+                phone,
+                skills,
+                experience,
+                updatedAt: new Date(),
+            },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        res.json(updatedUser);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const changePassword = async (req: AuthRequest, res: Response) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const user = req.user;
+
+        const foundUser = await userModel.findOne({ userId: user?.userId });
+        if (!foundUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Verify current password
+        const isValid = await foundUser.comparePassword(currentPassword);
+        if (!isValid) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+
+        // Update password
+        foundUser.password = newPassword;
+        await foundUser.save();
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body;
+
+        const user = await userModel.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Generate reset token (simplified)
+        const resetToken = Math.random().toString(36).slice(2);
+        const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpires = resetTokenExpiry;
+        await user.save();
+
+        // In production, send email with reset link
+        // await sendPasswordResetEmail(user.email, resetToken);
+
+        res.json({ message: 'Password reset email sent' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+    try {
+        const { token, newPassword } = req.body;
+
+        const user = await userModel.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() },
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired token' });
+        }
+
+        user.password = newPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        res.json({ message: 'Password reset successful' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
