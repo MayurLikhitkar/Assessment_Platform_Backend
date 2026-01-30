@@ -1,18 +1,38 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { generateUniqueId } from '../utils/generateId';
+
+export enum UserRole {
+    USER = 'user',
+    EVALUATOR = 'evaluator',
+    ADMIN = 'admin',
+    SUPER_ADMIN = 'super_admin',
+    PROCTOR = 'proctor', // important for live proctoring
+}
+
+export enum UserStatus {
+    ACTIVE = 'active',
+    INACTIVE = 'inactive',
+    SUSPENDED = 'suspended',
+    BANNED = 'banned',
+}
 
 export interface IUser extends Document {
     id: number;
+    fullName: string;
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
-    role: 'user' | 'admin' | 'evaluator' | 'super_admin';
-    status: 'active' | 'inactive' | 'suspended';
+    role: UserRole;
+    status: UserStatus;
     profilePicture?: string;
+    city?: string;
+    state?: string;
+    country?: string;
     phone?: string;
     dateOfBirth?: Date;
     skills: string[];
     experience?: number;
+    isEmailVerified: boolean;
+    isPhoneVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
     lastLogin?: Date;
@@ -22,48 +42,62 @@ export interface IUser extends Document {
     requireMicrophone: boolean;
 }
 
-const UserSchema = new Schema<IUser>(
+const userSchema = new Schema<IUser>(
     {
-        id: { type: Number, unique: true },
+        id: {
+            type: Number,
+            unique: true,
+            index: true,
+            // required: true
+        },
         email: {
             type: String,
             required: true,
             unique: true,
             lowercase: true,
             trim: true,
-            match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
         },
         password: {
             type: String,
             required: true,
-            minlength: 6
+            minlength: 6,
+            select: false,
         },
-        firstName: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        lastName: {
+        fullName: {
             type: String,
             required: true,
             trim: true
         },
         role: {
             type: String,
-            enum: ['user', 'admin', 'evaluator', 'super_admin'],
-            default: 'user',
+            enum: UserRole,
+            default: UserRole.USER,
         },
         status: {
             type: String,
-            enum: ['active', 'inactive', 'suspended'],
-            default: 'active',
+            enum: UserStatus,
+            default: UserStatus.ACTIVE,
         },
         profilePicture: String,
         phone: {
             type: String,
         },
         dateOfBirth: Date,
-        skills: [String],
+        country: String,
+        state: String,
+        city: String,
+        skills: {
+            type: [String],
+            default: [],
+        },
+        isEmailVerified: {
+            type: Boolean,
+            default: false,
+        },
+        isPhoneVerified: {
+            type: Boolean,
+            default: false,
+        },
         experience: Number,
         lastLogin: Date,
         resetPasswordToken: String,
@@ -75,4 +109,11 @@ const UserSchema = new Schema<IUser>(
 );
 
 
-export default mongoose.model<IUser>('User', UserSchema);
+// Pre-save hook to generate userId
+userSchema.pre('save', async function () {
+    if (this.isNew && !this.id) {
+        this.id = await generateUniqueId('user');
+    }
+});
+
+export default mongoose.model<IUser>('User', userSchema);

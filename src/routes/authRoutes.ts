@@ -1,45 +1,32 @@
 import express from 'express';
-import { body } from 'express-validator';
 import {
     register,
     login,
     logout,
-    refreshToken,
-    forgotPassword,
-    resetPassword,
-    getProfile,
-    updateProfile,
-    changePassword,
+    // refreshToken,
+    // forgotPassword,
+    // resetPassword,
+    // getProfile,
+    // updateProfile,
+    // changePassword,
 } from '../controllers/authController';
 import { authenticate } from '../middleware/authMiddleware';
+import { loginValidation, registerValidation } from '../controllers/validations/authValidation';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = express.Router();
 
-// Validation rules
-const registerValidation = [
-    body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 6 }),
-    body('firstName').notEmpty().trim(),
-    body('lastName').notEmpty().trim(),
-    body('phone').optional().isMobilePhone('any'),
-];
-
-const loginValidation = [
-    body('email').isEmail().normalizeEmail(),
-    body('password').notEmpty(),
-];
-
 // Routes
-router.post('/register', registerValidation, register);
-router.post('/login', loginValidation, login);
-router.post('/logout', authenticate, logout);
-router.post('/refresh', refreshToken);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
+router.post('/register', registerValidation, asyncHandler(register));
+router.post('/login', loginValidation, asyncHandler(login));
+router.post('/logout', authenticate, asyncHandler(logout));
+// router.post('/refresh', refreshToken);
+// router.post('/forgot-password', forgotPassword);
+// router.post('/reset-password', resetPassword);
 
-// Protected routes
-router.get('/profile', authenticate, getProfile);
-router.put('/profile', authenticate, updateProfile);
-router.put('/change-password', authenticate, changePassword);
+// // Protected routes
+// router.get('/profile', authenticate, getProfile);
+// router.put('/profile', authenticate, updateProfile);
+// router.put('/change-password', authenticate, changePassword);
 
 export default router;

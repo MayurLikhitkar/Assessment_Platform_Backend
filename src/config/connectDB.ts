@@ -1,12 +1,13 @@
 import mongoose from 'mongoose';
+import { DATABASE_URL } from './envConfig';
 
-const connectDB = async (): Promise<void> => {
+const connectDB = async () => {
     try {
-        const conn = await mongoose.connect(process.env.MONGODB_URI as string);
+        const conn = await mongoose.connect(DATABASE_URL);
 
-        console.log(`✅ MongoDB(Database) Connected: ${conn.connection.host}`);
+        console.log(`===> MongoDB(Database) Connected: ${conn.connection.host}`);
     } catch (error) {
-        console.error('❌ MongoDB(Database) connection error:', error);
+        console.error('MongoDB(Database) connection error:', error);
         process.exit(1);
     }
 };

@@ -1,12 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 // import helmet from 'helmet';
-// import { errorHandler } from './middleware/error';
 import authRoutes from './routes/authRoutes';
 // import categoryRoutes from './routes/categories';
 // import assessmentRoutes from './routes/assessments';
 import connectDB from './config/connectDB';
 import { ALLOWED_ORIGIN, PORT } from './config/envConfig';
+import errorHandler from './middleware/errorHandler';
+import { httpStatus } from './utils/constants';
 
 
 const app = express();
@@ -33,14 +34,14 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-    res.status(404).json({ message: 'Route not found' });
+// 404 handler - catches all unmatched routes
+app.use((req, res) => {
+    res.status(httpStatus.NOT_FOUND).json({ message: 'Route not found', success: false });
 });
 
 // Error handler
-// app.use(errorHandler);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.info(`===> Server running on port ${PORT}`);
 });
