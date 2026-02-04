@@ -9,8 +9,14 @@ export const registerValidation = [
         .normalizeEmail(),
     body('password')
         .trim()
-        .isLength({ min: 6 })
-        .withMessage('Password must be at least 6 characters long'),
+        .isLength({ min: 8 })
+        .withMessage('Password must be at least 8 characters long')
+        .matches(/[a-z]/)
+        .withMessage('Password must contain at least one lowercase letter')
+        .matches(/[A-Z]/)
+        .withMessage('Password must contain at least one uppercase letter')
+        .matches(/\d/)
+        .withMessage('Password must contain at least one number'),
     body('fullName').trim().notEmpty().withMessage('Full name is required'),
     body('phone')
         .trim()

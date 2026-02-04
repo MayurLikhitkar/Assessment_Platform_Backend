@@ -1,7 +1,7 @@
 import counterModel from "../models/counterModel";
 
 
-type CounterType = 'user' | 'order' | 'product' | 'invoice';
+type CounterType = 'user' | 'order' | 'product' | 'invoice' | 'assessment' | 'question' | 'category' | 'session' | 'userAssessment';
 
 export const generateUniqueId = async (type: CounterType): Promise<number> => {
     const counter = await counterModel.findOneAndUpdate(

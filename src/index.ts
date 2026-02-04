@@ -34,12 +34,10 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// 404 handler - catches all unmatched routes
 app.use((req, res) => {
     res.status(httpStatus.NOT_FOUND).json({ message: 'Route not found', success: false });
 });
 
-// Error handler
 app.use(errorHandler);
 
 app.listen(PORT, () => {

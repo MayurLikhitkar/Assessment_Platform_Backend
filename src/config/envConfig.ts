@@ -12,6 +12,8 @@ const PRODUCTION_ENV = NODE_ENV === 'production';
 export const PORT = process.env.PORT as string;
 export const JWT_SECRET = process.env.JWT_SECRET as string;
 export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string;
+export const JWT_EXPIRE = process.env.JWT_EXPIRE as string;
+export const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE as string;
 export const SALT_ROUNDS = Number(process.env.SALT_ROUNDS as string);
 export const DATABASE_URL = PRODUCTION_ENV ? PRODUCTION_DB_URL : LOCAL_DB_URL;
 export const ALLOWED_ORIGIN = PRODUCTION_ENV ? PRODUCTION_ORIGIN : LOCAL_ORIGIN;

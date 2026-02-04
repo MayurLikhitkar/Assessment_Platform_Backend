@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
-import { httpStatus } from "../../utils/constants";
+import { httpStatus } from "../utils/constants";
 
 const validate = (
     request: Request,

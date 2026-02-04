@@ -36,8 +36,8 @@ export interface IUser extends Document {
     createdAt: Date;
     updatedAt: Date;
     lastLogin?: Date;
-    resetPasswordToken?: string;
-    resetPasswordExpires?: Date;
+    resetPasswordToken: string | null;
+    resetPasswordExpires: Date | null;
     requireWebcam: boolean;
     requireMicrophone: boolean;
 }
@@ -48,7 +48,6 @@ const userSchema = new Schema<IUser>(
             type: Number,
             unique: true,
             index: true,
-            // required: true
         },
         email: {
             type: String,
@@ -100,14 +99,21 @@ const userSchema = new Schema<IUser>(
         },
         experience: Number,
         lastLogin: Date,
-        resetPasswordToken: String,
-        resetPasswordExpires: Date,
+        resetPasswordToken: {
+            type: String,
+            select: false,
+            default: null,
+        },
+        resetPasswordExpires: {
+            type: Date,
+            select: false,
+            default: null,
+        },
         requireWebcam: { type: Boolean, default: true },
         requireMicrophone: { type: Boolean, default: true },
     },
     { timestamps: true }
 );
-
 
 // Pre-save hook to generate userId
 userSchema.pre('save', async function () {

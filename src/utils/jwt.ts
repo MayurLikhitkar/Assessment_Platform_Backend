@@ -1,28 +1,28 @@
-import jwt from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { JWT_REFRESH_SECRET, JWT_SECRET } from '../config/envConfig';
-
-export interface TokenPayload {
-    userId: number;
-    email: string;
-    role: string;
-}
+import { TokenPayload } from '../types/authTypes';
 
 export const generateTokens = (payload: TokenPayload) => {
-    const accessToken = jwt.sign(
-        payload,
-        JWT_SECRET,
-        // { expiresIn: JWT_EXPIRE || '7d' }
-        { expiresIn: '7d' }
-    );
+    try {
+        const accessToken = jwt.sign(
+            payload,
+            JWT_SECRET,
+            // { expiresIn: JWT_EXPIRE || '7d' }
+            { expiresIn: '6h' }
+        );
 
-    const refreshToken = jwt.sign(
-        payload,
-        JWT_REFRESH_SECRET,
-        { expiresIn: '30d' }
-        // { expiresIn: JWT_REFRESH_EXPIRE || '30d' }
-    );
+        const refreshToken = jwt.sign(
+            payload,
+            JWT_REFRESH_SECRET,
+            { expiresIn: '2d' }
+            // { expiresIn: JWT_REFRESH_EXPIRE || '30d' }
+        );
 
-    return { accessToken, refreshToken };
+        return { accessToken, refreshToken };
+    } catch (error) {
+        console.error('JWT Error: Error generating tokens', error);
+        return null;
+    }
 };
 
 export const verifyToken = (token: string, isRefreshToken = false) => {
@@ -31,8 +31,15 @@ export const verifyToken = (token: string, isRefreshToken = false) => {
             ? JWT_REFRESH_SECRET
             : JWT_SECRET;
 
-        return jwt.verify(token, secret as string) as TokenPayload;
+        return jwt.verify(token, secret) as TokenPayload;
     } catch (error) {
+        if (error instanceof TokenExpiredError) {
+            console.error('JWT Error: Token expired');
+        } else if (error instanceof JsonWebTokenError) {
+            console.error('JWT Error: Invalid token signature/format');
+        } else {
+            console.error('JWT Error:', error);
+        }
         return null;
     }
 };

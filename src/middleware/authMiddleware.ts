@@ -1,48 +1,63 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import userModel from '../models/userModel';
 import { verifyToken } from '../utils/jwt';
-
-export interface AuthRequest extends Request {
-    user?: any;
-}
+import { httpStatus } from '../utils/constants';
+import { AuthRequest } from '../types/authTypes';
+import { errorResponse } from '../utils/responseHandler';
 
 export const authenticate = async (
-    req: AuthRequest,
-    res: Response,
+    request: AuthRequest,
+    response: Response,
     next: NextFunction
 ) => {
     try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
+        const authHeader = request.headers.authorization;
+
+        if (!authHeader?.startsWith('Bearer ')) {
+            throw new Error('Invalid token format');
+        }
+
+        const token = authHeader.split(" ")[1];
 
         if (!token) {
-            throw new Error();
+            throw new Error('No token provided');
         }
 
         const decoded = verifyToken(token);
         if (!decoded) {
-            throw new Error();
+            throw new Error('Invalid token');
         }
 
-        const user = await userModel.findOne({ userId: decoded.userId });
+        const user = await userModel.findOne({ id: decoded.userId });
         if (!user) {
-            throw new Error();
+            throw new Error('User not found');
         }
 
-        req.user = user;
+        request.user = {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+        };
         next();
     } catch (error) {
-        res.status(401).json({ message: 'Please authenticate' });
+        console.error('authenticate error ====> ', error);
+        if (error instanceof Error) {
+            return response.status(httpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', error.message))
+        }
+        return response.status(httpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', 'Authentication error', error));
     }
 };
 
 export const authorize = (...roles: string[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction) => {
         if (!req.user) {
-            return res.status(401).json({ message: 'Unauthorized' });
+            console.error('Unauthorized')
+            return res.status(httpStatus.UNAUTHORIZED).json(errorResponse('Unauthorized', 'Payload Not Found'));
         }
 
         if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ message: 'Forbidden' });
+            console.error('Forbidden')
+            return res.status(httpStatus.FORBIDDEN).json(errorResponse('Forbidden', 'Role Not Recognized'));
         }
 
         next();
