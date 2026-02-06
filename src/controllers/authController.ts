@@ -6,7 +6,7 @@ import { httpStatus, MESSAGE } from '../utils/constants';
 import { AuthRequest } from '../types/authTypes';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 
-export const registerController = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response) => {
 
     const { email, password, fullName, phone } = req.body as IUser;
 
@@ -29,7 +29,7 @@ export const registerController = async (req: Request, res: Response) => {
     return res.status(httpStatus.CREATED).json(successResponse(MESSAGE.REGISTERED_SUCCESSFULLY, user));
 };
 
-export const loginController = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response) => {
 
     const { email, password } = req.body as { email: string, password: string };
 
@@ -62,7 +62,7 @@ export const loginController = async (req: Request, res: Response) => {
     return res.status(httpStatus.OK).json({ ...tokens, success: true, message: MESSAGE.AUTHENTICATION_SUCCESS, user: userWithoutPassword });
 };
 
-export const logoutController = async (req: AuthRequest, res: Response) => {
+export const logout = async (req: AuthRequest, res: Response) => {
     // In a real application, you might want to blacklist the token
     return res.status(httpStatus.OK).json(successResponse(MESSAGE.LOGGED_OUT_SUCCESSFULLY));
 };
@@ -106,14 +106,27 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 };
 
 export const updateProfile = async (req: AuthRequest, res: Response) => {
-    const { firstName, lastName, phone, skills, experience } = req.body;
-    const user = req.user;
+    const { fullName, phone, skills, experience } = req.body as IUser;
+    const { email } = req.user!;
+
+    const foundUser = await userModel.findOne({ email });
+    if (!foundUser) {
+        return res.status(httpStatus.BAD_REQUEST).json(errorResponse('Account not found', 'Account not found'));
+    }
+
+    // const updatedUser = await userModel.updateOne({ email }, {
+    //     fullName,
+    //     phone,
+    //     skills,
+    //     experience,
+    //     updatedAt: new Date(),
+    // }, { new: true, runValidators: true })
+
 
     const updatedUser = await userModel.findOneAndUpdate(
-        { userId: user?.userId },
+        { email },
         {
-            firstName,
-            lastName,
+            fullName,
             phone,
             skills,
             experience,

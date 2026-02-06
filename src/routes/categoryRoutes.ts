@@ -9,7 +9,7 @@ import {
     getCategoryQuestions,
     getCategoryTree,
 } from '../controllers/categories';
-import { authenticate, authorize } from '../middleware/auth';
+import { authorize } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
@@ -30,7 +30,6 @@ router.get('/:id/questions', getCategoryQuestions);
 // Protected routes (admin only)
 router.post(
     '/',
-    authenticate,
     authorize('admin', 'super_admin'),
     categoryValidation,
     createCategory
@@ -38,7 +37,6 @@ router.post(
 
 router.put(
     '/:id',
-    authenticate,
     authorize('admin', 'super_admin'),
     categoryValidation,
     updateCategory
@@ -46,7 +44,6 @@ router.put(
 
 router.delete(
     '/:id',
-    authenticate,
     authorize('admin', 'super_admin'),
     deleteCategory
 );
