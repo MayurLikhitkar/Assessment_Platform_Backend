@@ -2,7 +2,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt';
 import { Request, Response } from 'express';
 import userModel, { IUser } from '../models/userModel';
 import { generateTokens, verifyToken } from '../utils/jwt';
-import { httpStatus, MESSAGE } from '../utils/constants';
+import { HttpStatus, MESSAGE } from '../utils/constants';
 import { AuthRequest } from '../types/authTypes';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 
@@ -12,7 +12,7 @@ export const register = async (req: Request, res: Response) => {
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
-        return res.status(httpStatus.CONFLICT).json(errorResponse(MESSAGE.ACCOUNT_ALREADY_EXISTS, 'User already exists'));
+        return res.status(HttpStatus.CONFLICT).json(errorResponse(MESSAGE.ACCOUNT_ALREADY_EXISTS, 'User already exists'));
     }
 
     const hashedPassword = await hashPassword(password);
@@ -26,7 +26,7 @@ export const register = async (req: Request, res: Response) => {
 
     await user.save();
 
-    return res.status(httpStatus.CREATED).json(successResponse(MESSAGE.REGISTERED_SUCCESSFULLY, user));
+    return res.status(HttpStatus.CREATED).json(successResponse(MESSAGE.REGISTERED_SUCCESSFULLY, user));
 };
 
 export const login = async (req: Request, res: Response) => {
@@ -35,12 +35,12 @@ export const login = async (req: Request, res: Response) => {
 
     const user = await userModel.findOne({ email }).select('+password');
     if (!user) {
-        return res.status(httpStatus.UNAUTHORIZED).json(errorResponse(MESSAGE.INVALID_CREDENTIALS, 'User not found'))
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse(MESSAGE.INVALID_CREDENTIALS, 'User not found'))
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
-        return res.status(httpStatus.UNAUTHORIZED).json(errorResponse(MESSAGE.INVALID_CREDENTIALS, 'Invalid password'))
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse(MESSAGE.INVALID_CREDENTIALS, 'Invalid password'))
     }
 
     // Update last login
@@ -54,34 +54,34 @@ export const login = async (req: Request, res: Response) => {
     });
 
     if (!tokens) {
-        return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(errorResponse(MESSAGE.SOMETHING_WENT_WRONG, 'Failed to generate tokens'));
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(errorResponse(MESSAGE.SOMETHING_WENT_WRONG, 'Failed to generate tokens'));
     }
 
     const { password: _, ...userWithoutPassword } = user.toObject();
 
-    return res.status(httpStatus.OK).json({ ...tokens, success: true, message: MESSAGE.AUTHENTICATION_SUCCESS, user: userWithoutPassword });
+    return res.status(HttpStatus.OK).json(successResponse(MESSAGE.AUTHENTICATION_SUCCESS, { ...tokens, user: userWithoutPassword }));
 };
 
 export const logout = async (req: AuthRequest, res: Response) => {
     // In a real application, you might want to blacklist the token
-    return res.status(httpStatus.OK).json(successResponse(MESSAGE.LOGGED_OUT_SUCCESSFULLY));
+    return res.status(HttpStatus.OK).json(successResponse(MESSAGE.LOGGED_OUT_SUCCESSFULLY));
 };
 
 export const refreshToken = async (req: Request, res: Response) => {
     const { refreshToken } = req.body as { refreshToken: string };
 
     if (!refreshToken) {
-        return res.status(httpStatus.BAD_REQUEST).json(errorResponse('Unauthorized Request', 'Refresh token is missing'));
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Invalid Request', 'Refresh token is missing'));
     }
 
     const decoded = verifyToken(refreshToken, true);
     if (!decoded) {
-        return res.status(httpStatus.UNAUTHORIZED).json(errorResponse('Unauthorized Request', 'Invalid refresh token'));
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Invalid Request', 'Invalid refresh token'));
     }
 
     const user = await userModel.findOne({ userId: decoded.userId });
     if (!user) {
-        return res.status(httpStatus.UNAUTHORIZED).json(errorResponse('Invalid Request', 'User not found'));
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Invalid Request', 'User not found'));
     }
 
     // Generate new tokens
@@ -91,37 +91,30 @@ export const refreshToken = async (req: Request, res: Response) => {
         role: user.role,
     });
 
-    return res.status(httpStatus.OK).json(successResponse(MESSAGE.AUTHENTICATION_SUCCESS, tokens));
+    return res.status(HttpStatus.OK).json(successResponse(MESSAGE.AUTHENTICATION_SUCCESS, tokens));
 };
 
 export const getProfile = async (req: AuthRequest, res: Response) => {
-    const user = await userModel.findOne({ userId: req.user?.userId })
-        .select('-password');
+    const { email } = req.user!;
+
+    const user = await userModel.findOne({ email })
+    // .select('-password');
 
     if (!user) {
-        return res.status(httpStatus.UNAUTHORIZED).json(errorResponse('Account not found', 'Account not found'));
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Account not found', 'Account not found'));
     }
 
-    return res.status(httpStatus.OK).json(successResponse('Account details fetched successfully', user));
+    return res.status(HttpStatus.OK).json(successResponse('Account details fetched successfully', user));
 };
 
 export const updateProfile = async (req: AuthRequest, res: Response) => {
     const { fullName, phone, skills, experience } = req.body as IUser;
     const { email } = req.user!;
-
+    console.log('========>', req.body)
     const foundUser = await userModel.findOne({ email });
     if (!foundUser) {
-        return res.status(httpStatus.BAD_REQUEST).json(errorResponse('Account not found', 'Account not found'));
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Account not found', 'Account not found'));
     }
-
-    // const updatedUser = await userModel.updateOne({ email }, {
-    //     fullName,
-    //     phone,
-    //     skills,
-    //     experience,
-    //     updatedAt: new Date(),
-    // }, { new: true, runValidators: true })
-
 
     const updatedUser = await userModel.findOneAndUpdate(
         { email },
@@ -135,7 +128,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
         { new: true, runValidators: true }
     ).select('-password');
 
-    return res.status(httpStatus.OK).json(successResponse('Account updated successfully', updatedUser));
+    return res.status(HttpStatus.OK).json(successResponse('Account updated successfully', updatedUser));
 };
 
 export const changePassword = async (req: AuthRequest, res: Response) => {
@@ -144,13 +137,13 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
 
     const foundUser = await userModel.findOne({ userId: user?.userId });
     if (!foundUser) {
-        return res.status(httpStatus.UNAUTHORIZED).json(errorResponse('Account not found', 'Account not found'));
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Account not found', 'Account not found'));
     }
 
     // Verify current password
     const isPasswordValid = await comparePassword(currentPassword, foundUser.password);
     if (!isPasswordValid) {
-        return res.status(httpStatus.UNAUTHORIZED).json(errorResponse('Wrong password', 'Invalid password'))
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Wrong password', 'Invalid password'))
     }
 
     const hashedPassword = await hashPassword(newPassword);
@@ -159,7 +152,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     foundUser.password = hashedPassword;
     await foundUser.save();
 
-    return res.status(httpStatus.OK).json(successResponse('Password updated successfully'));
+    return res.status(HttpStatus.OK).json(successResponse('Password updated successfully'));
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
@@ -167,7 +160,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     const user = await userModel.findOne({ email });
     if (!user) {
-        return res.status(httpStatus.UNAUTHORIZED).json(errorResponse('Account not found', 'Account not found'));
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Account not found', 'Account not found'));
     }
 
     // Generate reset token (simplified)
@@ -181,7 +174,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     // In production, send email with reset link
     // await sendPasswordResetEmail(user.email, resetToken);
 
-    return res.status(httpStatus.OK).json(successResponse('Password reset link sent to your email'));
+    return res.status(HttpStatus.OK).json(successResponse('Password reset link sent to your email'));
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
@@ -193,7 +186,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     });
 
     if (!user) {
-        return res.status(httpStatus.BAD_REQUEST).json(errorResponse('Reset Link Expired or Invalid', 'Invalid or expired token'));
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Reset Link Expired or Invalid', 'Invalid or expired token'));
     }
 
     const hashedPassword = await hashPassword(newPassword);
@@ -203,5 +196,5 @@ export const resetPassword = async (req: Request, res: Response) => {
     user.resetPasswordExpires = null;
     await user.save();
 
-    res.status(httpStatus.OK).json(successResponse('Password reset successfully'));
+    res.status(HttpStatus.OK).json(successResponse('Password reset successfully'));
 };

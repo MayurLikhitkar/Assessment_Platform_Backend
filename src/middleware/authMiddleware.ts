@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import userModel from '../models/userModel';
 import { verifyToken } from '../utils/jwt';
-import { httpStatus } from '../utils/constants';
+import { HttpStatus } from '../utils/constants';
 import { AuthRequest } from '../types/authTypes';
 import { errorResponse } from '../utils/responseHandler';
 
@@ -42,9 +42,9 @@ export const authenticate = async (
     } catch (error) {
         console.error('authenticate error ====> ', error);
         if (error instanceof Error) {
-            return response.status(httpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', error.message))
+            return response.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', error.message))
         }
-        return response.status(httpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', 'Authentication error', error));
+        return response.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', 'Authentication error', error));
     }
 };
 
@@ -52,12 +52,12 @@ export const authorize = (...roles: string[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction) => {
         if (!req.user) {
             console.error('Unauthorized')
-            return res.status(httpStatus.UNAUTHORIZED).json(errorResponse('Unauthorized', 'Payload Not Found'));
+            return res.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Unauthorized', 'Payload Not Found'));
         }
 
         if (!roles.includes(req.user.role)) {
             console.error('Forbidden')
-            return res.status(httpStatus.FORBIDDEN).json(errorResponse('Forbidden', 'Role Not Recognized'));
+            return res.status(HttpStatus.FORBIDDEN).json(errorResponse('Forbidden', 'Role Not Recognized'));
         }
 
         next();

@@ -7,7 +7,7 @@ import authRoutes from './routes/authRoutes';
 import connectDB from './config/connectDB';
 import { ALLOWED_ORIGIN, PORT } from './config/envConfig';
 import errorHandler from './middleware/errorHandler';
-import { httpStatus } from './utils/constants';
+import { HttpStatus } from './utils/constants';
 
 
 const app = express();
@@ -35,7 +35,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use((req, res) => {
-    res.status(httpStatus.NOT_FOUND).json({ message: 'Route not found', success: false });
+    res.status(HttpStatus.NOT_FOUND).json({ message: 'Route not found', success: false });
 });
 
 app.use(errorHandler);

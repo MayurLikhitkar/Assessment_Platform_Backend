@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
-import { httpStatus } from "../utils/constants";
+import { HttpStatus } from "../utils/constants";
 
 const validate = (
     request: Request,
@@ -14,7 +14,7 @@ const validate = (
             .array()
             .map((error) => error.msg)
             .join(", ");
-        return response.status(httpStatus.BAD_REQUEST).json({
+        return response.status(HttpStatus.BAD_REQUEST).json({
             success: false,
             message: errorMessages,
         });
