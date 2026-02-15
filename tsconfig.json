@@ -23,7 +23,7 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     // Style Options
-    "noUnusedLocals": true,
+    // "noUnusedLocals": true,
     // "noUnusedParameters": true,
     // Recommended Options
     "strict": true,

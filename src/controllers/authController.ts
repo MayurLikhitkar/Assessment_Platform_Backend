@@ -3,12 +3,16 @@ import { Request, Response } from 'express';
 import userModel, { IUser } from '../models/userModel';
 import { generateTokens, verifyToken } from '../utils/jwt';
 import { HttpStatus, MESSAGE } from '../utils/constants';
-import { AuthRequest } from '../types/authTypes';
+import { AuthRequest, ChangePasswordRequest } from '../types/authTypes';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 
 export const register = async (req: Request, res: Response) => {
 
-    const { email, password, fullName, phone } = req.body as IUser;
+    const { email, password, fullName, phone, confirmPassword } = req.body as IUser & { confirmPassword: string };
+
+    if (password !== confirmPassword) {
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Password and Confirmed Password do not match', 'Password and Confirmed Password do not match'));
+    }
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
@@ -31,7 +35,7 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
 
-    const { email, password } = req.body as { email: string, password: string };
+    const { email, password } = req.body as IUser;
 
     const user = await userModel.findOne({ email }).select('+password');
     if (!user) {
@@ -110,7 +114,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 export const updateProfile = async (req: AuthRequest, res: Response) => {
     const { fullName, phone, skills, experience } = req.body as IUser;
     const { email } = req.user!;
-    console.log('========>', req.body)
+
     const foundUser = await userModel.findOne({ email });
     if (!foundUser) {
         return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Account not found', 'Account not found'));
@@ -132,10 +136,14 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 };
 
 export const changePassword = async (req: AuthRequest, res: Response) => {
-    const { currentPassword, newPassword } = req.body as { currentPassword: string, newPassword: string };
-    const user = req.user;
+    const { currentPassword, newPassword, confirmPassword } = req.body as ChangePasswordRequest;
+    const { email } = req.user!;
 
-    const foundUser = await userModel.findOne({ userId: user?.userId });
+    if (newPassword !== confirmPassword) {
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Password and Confirmed Password do not match', 'Password and Confirmed Password do not match'));
+    }
+
+    const foundUser = await userModel.findOne({ email }).select('+password');
     if (!foundUser) {
         return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Account not found', 'Account not found'));
     }

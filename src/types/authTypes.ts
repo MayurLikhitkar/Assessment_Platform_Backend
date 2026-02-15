@@ -9,3 +9,9 @@ export interface TokenPayload {
 export interface AuthRequest extends Request {
     user?: TokenPayload;
 }
+
+export interface ChangePasswordRequest {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+}

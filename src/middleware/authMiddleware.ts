@@ -40,9 +40,8 @@ export const authenticate = async (
         };
         next();
     } catch (error) {
-        console.error('authenticate error ====> ', error);
         if (error instanceof Error) {
-            return response.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', error.message))
+            return response.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', error.message, error))
         }
         return response.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Authentication failed', 'Authentication error', error));
     }
