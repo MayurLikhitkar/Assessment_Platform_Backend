@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-// import helmet from 'helmet';
+import helmet from 'helmet';
 import authRoutes from './routes/authRoutes';
-// import categoryRoutes from './routes/categories';
-// import assessmentRoutes from './routes/assessments';
+import categoryRoutes from './routes/categoryRoutes';
+import assessmentRoutes from './routes/assessmentsRoutes';
 import connectDB from './config/connectDB';
 import { ALLOWED_ORIGIN, PORT } from './config/envConfig';
 import errorHandler from './middleware/errorHandler';
@@ -16,7 +16,7 @@ const app = express();
 connectDB();
 
 // Middleware
-// app.use(helmet());
+app.use(helmet());
 app.use(cors({
     origin: ALLOWED_ORIGIN || 'http://localhost:5173',
     credentials: true,
@@ -27,15 +27,19 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 // app.use('/api/categories', categoryRoutes);
-// app.use('/api/assessments', assessmentRoutes);
+app.use('/api/assessments', assessmentRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+    return res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+app.get('/', (req, res) => {
+    return res.json({ message: 'Server running', success: true, timestamp: new Date().toISOString() });
 });
 
 app.use((req, res) => {
-    res.status(HttpStatus.NOT_FOUND).json({ message: 'Route not found', success: false });
+    return res.status(HttpStatus.NOT_FOUND).json({ message: 'Route not found', success: false });
 });
 
 app.use(errorHandler);

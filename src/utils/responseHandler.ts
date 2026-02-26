@@ -2,6 +2,7 @@ interface ApiSuccessResponse<T = unknown> {
     success: true;
     responseMessage: string;
     data: T | null;
+    meta: any;
 }
 
 interface ApiErrorResponse {
@@ -13,8 +14,9 @@ interface ApiErrorResponse {
 
 export const successResponse = <T = unknown>(
     responseMessage: string,
-    data: T | null = null
-): ApiSuccessResponse<T> => ({ success: true, responseMessage, data });
+    data: T | null = null,
+    meta: any = null
+): ApiSuccessResponse<T> => ({ success: true, responseMessage, data, meta });
 
 export const errorResponse = (
     responseMessage: string,

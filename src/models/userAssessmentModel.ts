@@ -27,6 +27,8 @@ export interface IUserAssessment extends Document {
     evaluationDate?: Date;
     feedback?: string;
     isPassed: boolean;
+    createdBy: number;
+    updatedBy: number;
     createdAt: Date;
     updatedAt: Date;
 }

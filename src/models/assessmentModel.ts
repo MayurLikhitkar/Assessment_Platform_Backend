@@ -13,6 +13,7 @@ export interface IAssessment extends Document {
     passingMarks: number;
     questions: number[];
     createdBy: number;
+    updatedBy: number;
     isActive: boolean;
     isPublic: boolean;
     startDate?: Date;

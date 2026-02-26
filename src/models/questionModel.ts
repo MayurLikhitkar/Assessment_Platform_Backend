@@ -1,29 +1,41 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
-type ProgrammingLanguage =
-    | 'javascript' | 'typescript' | 'python' | 'java'
-    | 'c++' | 'c#' | 'php' | 'ruby' | 'go' | 'rust'
-    | 'swift' | 'kotlin' | 'dart' | 'scala' | 'r'
-    | 'sql' | 'html' | 'css' | 'bash' | 'powershell';
+type ProgrammingLanguage = 'javascript' | 'typescript' | 'python' | 'java' | 'c++' | 'c#' | 'php' | 'ruby' | 'go' | 'rust' | 'swift' | 'kotlin' | 'dart' | 'scala' | 'r' | 'sql' | 'html' | 'css' | 'bash' | 'powershell';
+
+type QuestionType = 'mcq' | 'coding' | 'query' | 'subjective';
+
+type Difficulty = 'easy' | 'medium' | 'hard';
+
+type DatabaseType = 'mysql' | 'postgresql' | 'mongodb' | 'sqlite';
+
+interface ITestCase {
+    id: number,
+    input: string,
+    expectedOutput: string,
+    isPublic: boolean,
+    points: number,
+}
+
+interface IOption {
+    id: number,
+    text: string,
+    isCorrect: boolean,
+}
 
 export interface IQuestion extends Document {
     id: number;
-    type: 'mcq' | 'coding' | 'query' | 'subjective';
+    type: QuestionType;
     question: string;
     marks: number;
-    difficulty: 'easy' | 'medium' | 'hard';
+    difficulty: Difficulty;
     categoryId: number;
     tags: string[];
     createdAt: Date;
     updatedAt: Date;
 
     // Type-specific fields (using discriminators or union types)
-    options?: {
-        id: number;
-        text: string;
-        isCorrect: boolean;
-    }[];
+    options?: IOption[];
     allowMultiple?: boolean;
     negativeMarks?: number;
     explanation?: string;
@@ -31,19 +43,13 @@ export interface IQuestion extends Document {
     language?: ProgrammingLanguage;
     allowedLanguages?: ProgrammingLanguage[];
     starterCode?: { [key in ProgrammingLanguage]?: string };
-    testCases?: {
-        testCaseId: number;
-        input: string;
-        expectedOutput: string;
-        isPublic: boolean;
-        points: number;
-    }[];
+    testCases?: ITestCase[];
     constraints?: string;
     hints?: string[];
     timeLimit?: number;
     memoryLimit?: number;
 
-    databaseType?: 'mysql' | 'postgresql' | 'mongodb' | 'sqlite';
+    databaseType?: DatabaseType;
     databaseSchema?: string;
     tables?: any[];
     sampleData?: any[];
@@ -60,15 +66,15 @@ export interface IQuestion extends Document {
     }[];
 }
 
-const TestCaseSchema = new Schema({
-    testCaseId: { type: Number, required: true },
+const TestCaseSchema = new Schema<ITestCase>({
+    id: { type: Number, required: true },
     input: { type: String, required: true },
     expectedOutput: { type: String, required: true },
     isPublic: { type: Boolean, default: false },
     points: { type: Number, default: 1 },
 });
 
-const OptionSchema = new Schema({
+const OptionSchema = new Schema<IOption>({
     id: { type: Number, required: true },
     text: { type: String, required: true },
     isCorrect: { type: Boolean, default: false },
@@ -143,10 +149,17 @@ const questionSchema = new Schema<IQuestion>(
     { timestamps: true }
 );
 
-// Pre-save hook to generate userId
 questionSchema.pre('save', async function () {
     if (this.isNew && !this.id) {
         this.id = await generateUniqueId('question');
+    }
+    switch (this.type) {
+        case QuestionType.MCQ:
+            if (!this.options || this.options.length < 2) {
+                throw new Error('MCQ questions must have at least 2 options');
+            }
+            break;
+        // ... other validations
     }
 });
 
