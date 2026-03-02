@@ -5,7 +5,6 @@ export interface IAssessment extends Document {
     id: number;
     title: string;
     description: string;
-    categoryId: number;
     type: ('aptitude' | 'coding' | 'query' | 'subjective')[];
     difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
     duration: number;
@@ -34,19 +33,6 @@ export interface IAssessment extends Document {
     updatedAt: Date;
 }
 
-const QuestionInAssessmentSchema = new Schema({
-    questionId: { type: Number, required: true },
-    type: {
-        type: String,
-        enum: ['mcq', 'coding', 'query', 'subjective'],
-        required: true,
-    },
-    question: String,
-    marks: Number,
-    difficulty: String,
-    index: Number,
-});
-
 const assessmentSchema = new Schema<IAssessment>(
     {
         id: {
@@ -63,11 +49,6 @@ const assessmentSchema = new Schema<IAssessment>(
         description: {
             type: String,
             maxlength: 1000
-        },
-        categoryId: {
-            type: Number,
-            required: true,
-            ref: 'AssessmentCategory'
         },
         type: [{
             type: String,
@@ -94,7 +75,11 @@ const assessmentSchema = new Schema<IAssessment>(
             required: true,
             min: 0
         },
-        questions: [QuestionInAssessmentSchema],
+        questions: {
+            type: [Number],
+            required: true,
+            ref: 'Question'
+        },
         createdBy: {
             type: Number,
             required: true,

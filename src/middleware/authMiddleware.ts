@@ -4,6 +4,7 @@ import { verifyToken } from '../utils/jwt';
 import { HttpStatus } from '../utils/constants';
 import { AuthRequest } from '../types/authTypes';
 import { errorResponse } from '../utils/responseHandler';
+import logger from '../utils/logger';
 
 export const authenticate = async (
     request: AuthRequest,
@@ -50,12 +51,12 @@ export const authenticate = async (
 export const authorize = (...roles: string[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction) => {
         if (!req.user) {
-            console.error('Unauthorized')
+            logger.warn('Unauthorized: missing user payload');
             return res.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Unauthorized', 'Payload Not Found'));
         }
 
         if (!roles.includes(req.user.role)) {
-            console.error('Forbidden')
+            logger.warn(`Forbidden: role "${req.user.role}" not in [${roles.join(', ')}]`);
             return res.status(HttpStatus.FORBIDDEN).json(errorResponse('Forbidden', 'Role Not Recognized'));
         }
 

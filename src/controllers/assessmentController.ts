@@ -1,12 +1,28 @@
 import { Response } from 'express';
 import assessmentModel, { IAssessment } from '../models/assessmentModel';
 import { GetAssessmentQuery } from '../types/assessmentTypes';
-import { QueryFilter } from 'mongoose';
+import { QueryFilter, startSession } from 'mongoose';
 import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 import { AuthRequest } from '../types/authTypes';
 import questionModel from '../models/questionModel';
+import logger from '../utils/logger';
 
+/** Build a createdAt date-range filter, or undefined if no dates provided */
+const dateRangeFilter = (startDate?: Date, endDate?: Date) => {
+    if (!startDate && !endDate) return undefined;
+
+    const dateFilter: Record<string, Date> = {};
+    if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        dateFilter.$lte = endDateTime;
+    }
+    return dateFilter;
+};
 
 /**
  * Get assessments with filtering, pagination, and search
@@ -54,16 +70,9 @@ export const getAssessments = async (req: AuthRequest, res: Response) => {
         filter.isPublic = isPublic === 'true' || isPublic === true;
     }
 
-    if (startDate || endDate) {
-        filter.createdAt = {};
-        if (startDate) {
-            filter.createdAt.$gte = new Date(startDate);
-        }
-        if (endDate) {
-            const endDateTime = new Date(endDate);
-            endDateTime.setHours(23, 59, 59, 999); // End of day
-            filter.createdAt.$lte = endDateTime;
-        }
+    const dateRange = dateRangeFilter(startDate, endDate);
+    if (dateRange) {
+        filter.createdAt = dateRange;
     }
 
     const sortOptions: Record<string, 1 | -1> = {
@@ -127,10 +136,6 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
             ]
         })
         .populate('categoryId', 'name description')
-        .populate({
-            path: 'questions.questionId',
-            select: 'id question type difficulty marks tags'
-        })
         .lean()
         .exec();
 
@@ -158,7 +163,154 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
  * @access Private (Instructor/Admin)
  */
 export const createAssessment = async (req: AuthRequest, res: Response) => {
+    // Ensure authenticated user exists
+    if (!req.user?.userId) {
+        return res.status(HttpStatus.UNAUTHORIZED).json(
+            errorResponse('Authentication required', 'User must be authenticated to create an assessment')
+        );
+    }
 
+    logger.info('User: ', req.user);
+    logger.info('Body: ', req.body);
+
+    const {
+        title,
+        description,
+        type,
+        difficulty,
+        duration,
+        passingMarks,
+        questions,
+        startDate,
+        endDate,
+        tags,
+        instructions,
+        isActive,
+        isPublic,
+        // Proctoring settings
+        requireWebcam,
+        requireMicrophone,
+        allowTabSwitch,
+        maxTabSwitches,
+        allowFullscreenExit,
+        maxFullscreenExits,
+        enableRecording,
+    } = req.body as IAssessment;
+
+    // Validate startDate is not in the past (checked independently of endDate)
+    if (startDate && new Date(startDate) < new Date()) {
+        return res.status(HttpStatus.BAD_REQUEST).json(
+            errorResponse('Invalid start date', 'Start date cannot be in the past')
+        );
+    }
+
+    // Validate date ordering when both dates are provided
+    if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
+        return res.status(HttpStatus.BAD_REQUEST).json(
+            errorResponse('Invalid date range', 'End date must be after start date')
+        );
+    }
+
+    // Validate duration
+    if (duration !== undefined && duration < 1) {
+        return res.status(HttpStatus.BAD_REQUEST).json(
+            errorResponse('Invalid duration', 'Duration must be at least 1 minute')
+        );
+    }
+
+    // Start a database transaction
+    const session = await startSession();
+    session.startTransaction();
+
+    try {
+        // Deduplicate question IDs (questions is number[] per the model)
+        const uniqueQuestionIds = [...new Set(questions)];
+
+        // Validate that all question IDs exist and are active
+        const existingQuestions = await questionModel
+            .find({
+                id: { $in: uniqueQuestionIds },
+                isActive: true
+            })
+            .select('id marks')
+            .lean()
+            .session(session)
+            .exec();
+
+        if (existingQuestions.length !== uniqueQuestionIds.length) {
+            const foundIds = new Set(existingQuestions.map(q => q.id));
+            const missingIds = uniqueQuestionIds.filter(id => !foundIds.has(id));
+
+            await session.abortTransaction();
+            return res.status(HttpStatus.BAD_REQUEST).json(
+                errorResponse(
+                    'Questions not found or inactive',
+                    `The following question IDs were not found or are inactive: ${missingIds.join(', ')}`
+                )
+            );
+        }
+
+        // Calculate total marks from validated questions (single pass)
+        const calculatedTotalMarks = existingQuestions.reduce((sum, q) => sum + q.marks, 0);
+
+        // Validate passing marks against total marks
+        if (passingMarks > calculatedTotalMarks) {
+            await session.abortTransaction();
+            return res.status(HttpStatus.BAD_REQUEST).json(
+                errorResponse(
+                    'Invalid passing marks',
+                    `Passing marks (${passingMarks}) cannot exceed total marks (${calculatedTotalMarks})`
+                )
+            );
+        }
+
+        // Build and save the assessment document
+        const assessment = new assessmentModel({
+            title,
+            description,
+            type,
+            difficulty,
+            duration,
+            totalMarks: calculatedTotalMarks,
+            passingMarks,
+            questions: uniqueQuestionIds,
+            tags,
+            instructions,
+            isActive: isActive !== false,  // Default to true
+            isPublic: isPublic === true,   // Default to false
+            startDate,
+            endDate,
+            createdBy: req.user.userId,
+            // Proctoring settings
+            requireWebcam,
+            requireMicrophone,
+            allowTabSwitch,
+            maxTabSwitches,
+            allowFullscreenExit,
+            maxFullscreenExits,
+            enableRecording,
+        });
+
+        await assessment.save({ session });
+        await session.commitTransaction();
+
+        // Populate the saved assessment for the response (outside transaction)
+        const populatedAssessment = await assessmentModel
+            .findById(assessment._id)
+            .populate('categoryId', 'name description')
+            .select('-__v')
+            .lean()
+            .exec();
+
+        return res.status(HttpStatus.CREATED).json(
+            successResponse('Assessment created successfully', populatedAssessment)
+        );
+    } catch (error) {
+        await session.abortTransaction();
+        throw error; // Let asyncHandler forward to the error handler
+    } finally {
+        session.endSession();
+    }
 };
 
 // export const updateAssessment = async (req: AuthRequest, res: Response) => {

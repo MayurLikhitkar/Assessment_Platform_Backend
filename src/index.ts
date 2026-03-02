@@ -8,6 +8,7 @@ import connectDB from './config/connectDB';
 import { ALLOWED_ORIGIN, PORT } from './config/envConfig';
 import errorHandler from './middleware/errorHandler';
 import { HttpStatus } from './utils/constants';
+import logger from './utils/logger';
 
 
 const app = express();
@@ -45,5 +46,5 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-    console.info(`===> Server running on port ${PORT}`);
+    logger.info(`Server running on port ${PORT}`);
 });

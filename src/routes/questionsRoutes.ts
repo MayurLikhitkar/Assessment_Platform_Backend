@@ -1,5 +1,5 @@
 import express from 'express';
-import { body } from 'express-validator';
+import { authenticate, authorize } from '../middleware/authMiddleware';
 import {
     getQuestions,
     getQuestionById,
@@ -7,67 +7,71 @@ import {
     updateQuestion,
     deleteQuestion,
     getQuestionsByCategory,
-    importQuestions,
     exportQuestions,
-} from '../controllers/questions';
-import { authenticate, authorize } from '../middleware/auth';
-import upload from '../middleware/upload';
+} from '../controllers/questionController';
+import { asyncHandler } from '../utils/asyncHandler';
+import {
+    getQuestionsValidation,
+    getQuestionByIdValidation,
+    getQuestionsByCategoryValidation,
+    createQuestionValidation,
+    updateQuestionValidation,
+    deleteQuestionValidation,
+} from '../validations/questionValidations';
 
 const router = express.Router();
 
-// Validation rules
-const questionValidation = [
-    body('type').isIn(['mcq', 'coding', 'query', 'subjective']),
-    body('question').notEmpty().trim(),
-    body('marks').isInt({ min: 1 }),
-    body('difficulty').isIn(['easy', 'medium', 'hard']),
-    body('categoryId').isInt(),
-    body('tags').optional().isArray(),
-];
+// ─── Public routes ────────────────────────────────────────────────────
 
-// Public routes
-router.get('/', getQuestions);
-router.get('/category/:categoryId', getQuestionsByCategory);
-router.get('/:id', getQuestionById);
+router.get('/', getQuestionsValidation, asyncHandler(getQuestions));
+router.get('/category/:categoryId', getQuestionsByCategoryValidation, asyncHandler(getQuestionsByCategory));
+router.get('/:id', getQuestionByIdValidation, asyncHandler(getQuestionById));
 
-// Protected routes (admin only)
+// ─── Protected routes (Admin / Super Admin) ───────────────────────────
+
+// Export must be declared BEFORE /:id routes to avoid matching "export" as an :id
+router.get(
+    '/export',
+    authenticate,
+    authorize('admin', 'super_admin'),
+    asyncHandler(exportQuestions)
+);
+
 router.post(
     '/',
     authenticate,
     authorize('admin', 'super_admin'),
-    questionValidation,
-    createQuestion
+    createQuestionValidation,
+    asyncHandler(createQuestion)
 );
 
 router.put(
     '/:id',
     authenticate,
     authorize('admin', 'super_admin'),
-    questionValidation,
-    updateQuestion
+    updateQuestionValidation,
+    asyncHandler(updateQuestion)
 );
 
 router.delete(
     '/:id',
     authenticate,
     authorize('admin', 'super_admin'),
-    deleteQuestion
+    deleteQuestionValidation,
+    asyncHandler(deleteQuestion)
 );
 
-// Import/Export
-router.post(
-    '/import',
-    authenticate,
-    authorize('admin', 'super_admin'),
-    upload.single('file'),
-    importQuestions
-);
-
-router.get(
-    '/export',
-    authenticate,
-    authorize('admin', 'super_admin'),
-    exportQuestions
-);
+// ─── Import (file upload) ─────────────────────────────────────────────
+// NOTE: Requires a multer upload middleware to be configured.
+//       Uncomment and add upload middleware when ready:
+//
+// import upload from '../middleware/upload';
+// router.post(
+//     '/import',
+//     authenticate,
+//     authorize('admin', 'super_admin'),
+//     upload.single('file'),
+//     asyncHandler(importQuestions)
+// );
 
 export default router;

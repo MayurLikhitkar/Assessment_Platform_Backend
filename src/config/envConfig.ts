@@ -10,6 +10,7 @@ const PRODUCTION_DB_URL = process.env.PRODUCTION_DB_URL as string;
 const PRODUCTION_ENV = NODE_ENV === 'production';
 
 export const PORT = process.env.PORT as string;
+export const LOG_LEVEL = process.env.LOG_LEVEL as string;
 export const JWT_SECRET = process.env.JWT_SECRET as string;
 export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string;
 export const JWT_EXPIRE = process.env.JWT_EXPIRE as string;

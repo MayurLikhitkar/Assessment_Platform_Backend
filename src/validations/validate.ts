@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import { HttpStatus } from "../utils/constants";
+import logger from "../utils/logger";
 
 const validate = (
     request: Request,
@@ -8,7 +9,7 @@ const validate = (
     next: NextFunction
 ) => {
     const errors = validationResult(request);
-    console.error('errors ====>', errors)
+    logger.debug('Validation result', { errors: errors.array() });
     if (!errors.isEmpty()) {
         const errorMessages = errors
             .array()

@@ -8,7 +8,6 @@ export interface ICategory extends Document {
     type: ('aptitude' | 'coding' | 'query' | 'subjective')[];
     subCategories: string[];
     icon?: string;
-    colorCode?: string;
     isActive: boolean;
     createdBy: number;
     createdAt: Date;
@@ -35,10 +34,6 @@ const categorySchema = new Schema<ICategory>(
         }],
         subCategories: [String],
         icon: String,
-        colorCode: {
-            type: String,
-            match: [/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Invalid color code']
-        },
         isActive: {
             type: Boolean,
             default: true

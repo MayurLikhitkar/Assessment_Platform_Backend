@@ -118,7 +118,7 @@ const sessionSchema = new Schema<ISession>(
 // Pre-save hook to generate userId
 sessionSchema.pre('save', async function () {
     if (this.isNew && !this.id) {
-        this.id = await generateUniqueId('question');
+        this.id = await generateUniqueId('session');
     }
 });
 
