@@ -6,7 +6,7 @@ export const getQuestionsValidation = [
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer').toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100').toInt(),
     query('search').optional().trim().isString(),
-    query('categoryId').optional().isNumeric().withMessage('Category ID must be numeric').toInt(),
+    query('categoryId').optional().isMongoId().withMessage('Category ID must be a valid MongoDB ObjectId'),
     query('difficulty')
         .optional()
         .isIn(['easy', 'medium', 'hard'])
@@ -28,7 +28,7 @@ export const getQuestionByIdValidation = [
 
 // ─── GET /questions/category/:categoryId param validation ─────────────
 export const getQuestionsByCategoryValidation = [
-    param('categoryId').isInt({ min: 1 }).withMessage('Category ID must be a positive integer').toInt(),
+    param('categoryId').isMongoId().withMessage('Category ID must be a valid MongoDB ObjectId'),
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer').toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100').toInt(),
     validate
@@ -59,8 +59,7 @@ export const createQuestionValidation = [
 
     body('categoryId')
         .notEmpty().withMessage('Category ID is required')
-        .isNumeric().withMessage('Category ID must be numeric')
-        .toInt(),
+        .isMongoId().withMessage('Category ID must be a valid MongoDB ObjectId'),
 
     body('tags')
         .optional()
@@ -191,8 +190,7 @@ export const updateQuestionValidation = [
 
     body('categoryId')
         .optional()
-        .isNumeric().withMessage('Category ID must be numeric')
-        .toInt(),
+        .isMongoId().withMessage('Category ID must be a valid MongoDB ObjectId'),
 
     body('tags')
         .optional()

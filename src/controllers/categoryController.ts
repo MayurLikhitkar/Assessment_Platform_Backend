@@ -16,7 +16,7 @@ export const getCategories = async (req: Request, res: Response) => {
 export const getCategoryById = async (req: Request, res: Response) => {
     try {
         const category = await categoryModel.findOne({
-            categoryId: req.params.id,
+            id: Number(req.params.id),
         });
 
         if (!category) {
@@ -37,7 +37,7 @@ export const createCategory = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { name, description, type, subCategories, icon, colorCode } = req.body;
+        const { name, description, type, subCategories, icon } = req.body;
 
         // Check if category already exists
         const existingCategory = await categoryModel.findOne({ name });
@@ -71,14 +71,14 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
         }
 
         const category = await categoryModel.findOne({
-            categoryId: req.params.id,
+            id: Number(req.params.id),
         });
 
         if (!category) {
             return res.status(404).json({ message: 'Category not found' });
         }
 
-        const { name, description, type, subCategories, icon, colorCode, isActive } = req.body;
+        const { name, description, type, subCategories, icon, isActive } = req.body;
 
         // Update category
         category.name = name || category.name;
@@ -86,7 +86,6 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
         category.type = type || category.type;
         category.subCategories = subCategories || category.subCategories;
         category.icon = icon || category.icon;
-        category.colorCode = colorCode || category.colorCode;
         if (isActive !== undefined) category.isActive = isActive;
 
         await category.save();
@@ -99,7 +98,7 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
 export const deleteCategory = async (req: AuthRequest, res: Response) => {
     try {
         const category = await categoryModel.findOne({
-            categoryId: req.params.id,
+            id: Number(req.params.id),
         });
 
         if (!category) {
@@ -108,7 +107,7 @@ export const deleteCategory = async (req: AuthRequest, res: Response) => {
 
         // Check if category has questions
         const questionCount = await questionModel.countDocuments({
-            categoryId: category.categoryId,
+            categoryId: category._id,
         });
 
         if (questionCount > 0) {
@@ -126,8 +125,13 @@ export const deleteCategory = async (req: AuthRequest, res: Response) => {
 
 export const getCategoryQuestions = async (req: Request, res: Response) => {
     try {
+        const category = await categoryModel.findOne({ id: Number(req.params.id) });
+        if (!category) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+
         const questions = await questionModel.find({
-            categoryId: req.params.id,
+            categoryId: category._id,
         }).sort({ createdAt: -1 });
 
         res.json(questions);

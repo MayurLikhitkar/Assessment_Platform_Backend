@@ -9,8 +9,8 @@ const validate = (
     next: NextFunction
 ) => {
     const errors = validationResult(request);
-    logger.debug('Validation result', { errors: errors.array() });
     if (!errors.isEmpty()) {
+        logger.debug('Validation result', { errors: errors.array() });
         const errorMessages = errors
             .array()
             .map((error) => error.msg)

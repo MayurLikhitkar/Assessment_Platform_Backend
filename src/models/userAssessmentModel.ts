@@ -1,10 +1,10 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
 export interface IUserAssessment extends Document {
     id: number;
-    userId: number;
-    assessmentId: number;
+    userId: Types.ObjectId;
+    assessmentId: Types.ObjectId;
     status: 'assigned' | 'in-progress' | 'completed' | 'expired' | 'terminated';
     startedAt?: Date;
     completedAt?: Date;
@@ -23,12 +23,12 @@ export interface IUserAssessment extends Document {
         details?: string;
     }[];
 
-    evaluatedBy?: number;
+    evaluatedBy?: Types.ObjectId;
     evaluationDate?: Date;
     feedback?: string;
     isPassed: boolean;
-    createdBy: number;
-    updatedBy: number;
+    createdBy: Types.ObjectId;
+    updatedBy: Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -62,12 +62,12 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
     {
         id: { type: Number, unique: true },
         userId: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             required: true,
             ref: 'User'
         },
         assessmentId: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             required: true,
             ref: 'Assessment'
         },
@@ -99,7 +99,7 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
         violations: [ViolationSchema],
 
         evaluatedBy: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             ref: 'User'
         },
         evaluationDate: Date,

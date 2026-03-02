@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { QueryFilter } from 'mongoose';
+import { QueryFilter, Types } from 'mongoose';
 import * as csv from 'csv-parser';
 import { Readable } from 'node:stream';
 import questionModel, { IQuestion } from '../models/questionModel';
@@ -163,7 +163,7 @@ export const createQuestion = async (req: AuthRequest, res: Response) => {
         categoryId,
         tags,
         isActive: isActive !== false,
-        createdBy: req.user.userId,
+        createdBy: new Types.ObjectId(req.user.userId),
         // MCQ fields
         options,
         allowMultiple,
@@ -244,7 +244,7 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
         }
     }
 
-    question.updatedBy = req.user.userId;
+    question.updatedBy = new Types.ObjectId(req.user.userId);
 
     await question.save();
 
@@ -287,7 +287,7 @@ export const deleteQuestion = async (req: AuthRequest, res: Response) => {
     }
 
     question.isActive = false;
-    question.updatedBy = req.user.userId;
+    question.updatedBy = new Types.ObjectId(req.user.userId);
     await question.save();
 
     return res.status(HttpStatus.OK).json(
@@ -308,7 +308,7 @@ export const getQuestionsByCategory = async (req: AuthRequest, res: Response) =>
     const skip = (pageNumber - 1) * limitNumber;
 
     const filter: QueryFilter<IQuestion> = {
-        categoryId: Number(req.params.categoryId),
+        categoryId: req.params.categoryId,
         isActive: true,
     };
 

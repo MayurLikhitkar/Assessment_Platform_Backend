@@ -8,11 +8,7 @@ import { errorResponse, successResponse } from '../utils/responseHandler';
 
 export const register = async (req: Request, res: Response) => {
 
-    const { email, password, fullName, phone, confirmPassword } = req.body as IUser & { confirmPassword: string };
-
-    if (password !== confirmPassword) {
-        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Password and Confirmed Password do not match', 'Password and Confirmed Password do not match'));
-    }
+    const { email, password, fullName, phone } = req.body as IUser;
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
@@ -39,7 +35,7 @@ export const login = async (req: Request, res: Response) => {
 
     const user = await userModel.findOne({ email }).select('+password');
     if (!user) {
-        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse(MESSAGE.INVALID_CREDENTIALS, 'User not found'))
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse(MESSAGE.INVALID_CREDENTIALS, 'Account with this email not found'))
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
@@ -52,6 +48,7 @@ export const login = async (req: Request, res: Response) => {
     await user.save();
 
     const tokens = generateTokens({
+        _id: user._id.toString(),
         userId: user.id,
         email: user.email,
         role: user.role,
@@ -83,13 +80,14 @@ export const refreshToken = async (req: Request, res: Response) => {
         return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Invalid Request', 'Invalid refresh token'));
     }
 
-    const user = await userModel.findOne({ userId: decoded.userId });
+    const user = await userModel.findById(decoded._id);
     if (!user) {
         return res.status(HttpStatus.BAD_REQUEST).json(errorResponse('Invalid Request', 'User not found'));
     }
 
     // Generate new tokens
     const tokens = generateTokens({
+        _id: user._id.toString(),
         userId: user.id,
         email: user.email,
         role: user.role,

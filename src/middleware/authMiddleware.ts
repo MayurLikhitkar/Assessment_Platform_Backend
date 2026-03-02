@@ -29,12 +29,13 @@ export const authenticate = async (
             throw new Error('Invalid token');
         }
 
-        const user = await userModel.findOne({ id: decoded.userId });
+        const user = await userModel.findById(decoded._id);
         if (!user) {
             throw new Error('User not found');
         }
 
         request.user = {
+            _id: user._id.toString(),
             userId: user.id,
             email: user.email,
             role: user.role,

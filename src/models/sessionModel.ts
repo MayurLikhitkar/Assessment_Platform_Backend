@@ -1,11 +1,11 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
 export interface ISession extends Document {
     id: number;
-    userId: number;
-    assessmentId: number;
-    userAssessmentId: number;
+    userId: Types.ObjectId;
+    assessmentId: Types.ObjectId;
+    userAssessmentId: Types.ObjectId;
     startTime: Date;
     lastActive: Date;
     endTime?: Date;
@@ -55,17 +55,17 @@ const sessionSchema = new Schema<ISession>(
     {
         id: { type: Number, unique: true },
         userId: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             required: true,
             ref: 'User'
         },
         assessmentId: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             required: true,
             ref: 'Assessment'
         },
         userAssessmentId: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             required: true,
             ref: 'UserAssessment'
         },

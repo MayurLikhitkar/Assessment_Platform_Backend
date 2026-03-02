@@ -66,8 +66,7 @@ export const createAssessmentValidation = [
         .isArray({ min: 1 }).withMessage('Questions must be a non-empty array of question IDs'),
 
     body('questions.*')
-        .isInt({ min: 1 }).withMessage('Each question ID must be a positive integer')
-        .toInt(),
+        .isMongoId().withMessage('Each question ID must be a valid MongoDB ObjectId'),
 
     body('startDate')
         .optional()

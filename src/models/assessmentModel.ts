@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
 export interface IAssessment extends Document {
@@ -10,9 +10,9 @@ export interface IAssessment extends Document {
     duration: number;
     totalMarks: number;
     passingMarks: number;
-    questions: number[];
-    createdBy: number;
-    updatedBy: number;
+    questions: Types.ObjectId[];
+    createdBy: Types.ObjectId;
+    updatedBy: Types.ObjectId;
     isActive: boolean;
     isPublic: boolean;
     startDate?: Date;
@@ -75,13 +75,13 @@ const assessmentSchema = new Schema<IAssessment>(
             required: true,
             min: 0
         },
-        questions: {
-            type: [Number],
+        questions: [{
+            type: Schema.Types.ObjectId,
             required: true,
             ref: 'Question'
-        },
+        }],
         createdBy: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             required: true,
             ref: 'User'
         },

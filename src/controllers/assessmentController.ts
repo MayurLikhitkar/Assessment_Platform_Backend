@@ -47,9 +47,6 @@ export const getAssessments = async (req: AuthRequest, res: Response) => {
         ];
     }
 
-    if (categoryId) {
-        filter.categoryId = Number(categoryId);
-    }
 
     if (difficulty) {
         filter.difficulty = Array.isArray(difficulty)
@@ -86,7 +83,7 @@ export const getAssessments = async (req: AuthRequest, res: Response) => {
             .sort(sortOptions)
             .skip(skip)
             .limit(limitNumber)
-            .populate('categoryId', 'name description') // Populate category details
+            .populate('createdBy', 'fullName email')
             .lean()
             .exec(),
         assessmentModel.countDocuments(filter).exec()
@@ -135,7 +132,7 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
                 { id: Number(id) }
             ]
         })
-        .populate('categoryId', 'name description')
+        .populate('createdBy', 'fullName email')
         .lean()
         .exec();
 
@@ -144,13 +141,13 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
     }
 
     // Check if user has permission to view (if private)
-    if (!assessment.isPublic && assessment.createdBy !== req.user?.userId) {
-        // Check if user has admin role or specific permissions
-        const hasPermission = req.user?.role === 'admin' || req.user?.role === 'instructor';
-        if (!hasPermission) {
-            return res.status(HttpStatus.FORBIDDEN).json(errorResponse('You do not have permission to view this assessment', 'Only two roles can view private assessments: admin and instructor'));
-        }
-    }
+    // if (!assessment.isPublic && assessment.createdBy?.toString() !== req.user?.userId) {
+    //     // Check if user has admin role or specific permissions
+    //     const hasPermission = req.user?.role === 'admin' || req.user?.role === 'instructor';
+    //     if (!hasPermission) {
+    //         return res.status(HttpStatus.FORBIDDEN).json(errorResponse('You do not have permission to view this assessment', 'Only two roles can view private assessments: admin and instructor'));
+    //     }
+    // }
 
     return res.status(HttpStatus.OK).json(
         successResponse('Assessment fetched successfully', assessment)
@@ -229,7 +226,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
         // Validate that all question IDs exist and are active
         const existingQuestions = await questionModel
             .find({
-                id: { $in: uniqueQuestionIds },
+                _id: { $in: uniqueQuestionIds },
                 isActive: true
             })
             .select('id marks')
@@ -238,7 +235,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
             .exec();
 
         if (existingQuestions.length !== uniqueQuestionIds.length) {
-            const foundIds = new Set(existingQuestions.map(q => q.id));
+            const foundIds = new Set(existingQuestions.map(q => q._id));
             const missingIds = uniqueQuestionIds.filter(id => !foundIds.has(id));
 
             await session.abortTransaction();
@@ -297,7 +294,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
         // Populate the saved assessment for the response (outside transaction)
         const populatedAssessment = await assessmentModel
             .findById(assessment._id)
-            .populate('categoryId', 'name description')
+            .populate('createdBy', 'fullName email')
             .select('-__v')
             .lean()
             .exec();

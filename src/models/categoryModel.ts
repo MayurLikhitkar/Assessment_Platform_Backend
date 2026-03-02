@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
 export interface ICategory extends Document {
@@ -9,7 +9,7 @@ export interface ICategory extends Document {
     subCategories: string[];
     icon?: string;
     isActive: boolean;
-    createdBy: number;
+    createdBy: Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -39,7 +39,7 @@ const categorySchema = new Schema<ICategory>(
             default: true
         },
         createdBy: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             required: true,
             ref: 'User'
         },

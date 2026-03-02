@@ -35,6 +35,8 @@ export interface IUser extends Document {
     isPhoneVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
+    createdBy?: string;
+    updatedBy?: string;
     lastLogin?: Date;
     resetPasswordToken: string | null;
     resetPasswordExpires: Date | null;
@@ -42,6 +44,7 @@ export interface IUser extends Document {
     requireMicrophone: boolean;
 }
 
+// user schema with default _id
 const userSchema = new Schema<IUser>(
     {
         id: {
@@ -111,6 +114,14 @@ const userSchema = new Schema<IUser>(
         },
         requireWebcam: { type: Boolean, default: true },
         requireMicrophone: { type: Boolean, default: true },
+        createdBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        updatedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
     },
     { timestamps: true }
 );

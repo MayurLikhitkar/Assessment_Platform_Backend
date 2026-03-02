@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
 export enum ProgrammingLanguage {
@@ -59,11 +59,11 @@ export interface IQuestion extends Document {
     question: string;
     marks: number;
     difficulty: Difficulty;
-    categoryId: number;
+    categoryId: Types.ObjectId;
     tags: string[];
     isActive: boolean;
-    createdBy: number;
-    updatedBy: number;
+    createdBy: Types.ObjectId;
+    updatedBy: Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 
@@ -203,7 +203,7 @@ const questionSchema = new Schema<IQuestion>(
             index: true
         },
         categoryId: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             required: [true, 'Category ID is required'],
             ref: 'AssessmentCategory',
             index: true
@@ -224,11 +224,11 @@ const questionSchema = new Schema<IQuestion>(
             index: true
         },
         createdBy: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             ref: 'User',
         },
         updatedBy: {
-            type: Number,
+            type: Schema.Types.ObjectId,
             ref: 'User',
         },
 
@@ -433,7 +433,7 @@ questionSchema.methods.isCorrectAnswer = function (
 };
 
 // Static methods
-questionSchema.statics.findByCategory = function (categoryId: number) {
+questionSchema.statics.findByCategory = function (categoryId: Types.ObjectId) {
     return this.find({ categoryId, isActive: true }).sort({ createdAt: -1 });
 };
 
