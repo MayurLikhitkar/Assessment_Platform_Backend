@@ -1,5 +1,6 @@
 import { body, query } from 'express-validator';
 import validate from './validate';
+import { AssessmentDifficulty, AssessmentType } from '../models/assessmentModel';
 
 export const getAssessmentsValidation = [
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer').toInt(),
@@ -28,33 +29,34 @@ export const getAssessmentsValidation = [
 
 export const createAssessmentValidation = [
     body('title')
+        .trim()
         .notEmpty().withMessage('Title is required')
         .isString().withMessage('Title must be a string')
-        .trim()
         .isLength({ max: 200 }).withMessage('Title cannot exceed 200 characters'),
 
     body('description')
-        .optional()
-        .isString().withMessage('Description must be a string')
+        .optional({ values: 'falsy' })
         .trim()
+        .isString().withMessage('Description must be a string')
         .isLength({ max: 1000 }).withMessage('Description cannot exceed 1000 characters'),
 
     body('type')
         .isArray({ min: 1 }).withMessage('Type must be a non-empty array')
-        .custom((types: string[]) => {
-            const validTypes = new Set(['aptitude', 'coding', 'query', 'subjective']);
+        .custom((types: AssessmentType[]) => {
+            const validTypes = new Set(Object.values(AssessmentType));
             return types.every((t) => validTypes.has(t));
         })
-        .withMessage('Each type must be one of: aptitude, coding, query, subjective'),
+        .withMessage('Each type must be one of: ' + Object.values(AssessmentType).join(', ')),
 
     body('difficulty')
-        .optional()
-        .isIn(['beginner', 'intermediate', 'advanced', 'expert'])
-        .withMessage('Difficulty must be one of: beginner, intermediate, advanced, expert'),
+        .optional({ values: 'falsy' })
+        .trim()
+        .isIn(Object.values(AssessmentDifficulty))
+        .withMessage('Difficulty must be one of: ' + Object.values(AssessmentDifficulty).join(', ')),
 
-    body('duration')
+    body('durationInMinutes')
         .notEmpty().withMessage('Duration is required')
-        .isInt({ min: 1 }).withMessage('Duration must be at least 1 minute')
+        .isInt({ min: 10, max: 240 }).withMessage('Duration must be between 10 and 240 minutes')
         .toInt(),
 
     body('passingMarks')
@@ -70,11 +72,25 @@ export const createAssessmentValidation = [
 
     body('startDate')
         .optional()
-        .isISO8601().withMessage('Start date must be a valid ISO 8601 date'),
+        .isISO8601().withMessage('Start date must be a valid ISO 8601 date')
+        .custom((value) => {
+            if (new Date(value) < new Date()) {
+                throw new Error('Start date cannot be in the past');
+            }
+            return true;
+        })
+        .toDate(),
 
     body('endDate')
         .optional()
-        .isISO8601().withMessage('End date must be a valid ISO 8601 date'),
+        .isISO8601().withMessage('End date must be a valid ISO 8601 date')
+        .custom((value, { req }) => {
+            if (req.body.startDate && new Date(value) <= new Date(req.body.startDate)) {
+                throw new Error('End date must be after start date');
+            }
+            return true;
+        })
+        .toDate(),
 
     body('tags')
         .optional()
@@ -82,31 +98,32 @@ export const createAssessmentValidation = [
 
     body('tags.*')
         .optional()
-        .isString().withMessage('Each tag must be a string')
         .trim()
+        .isString().withMessage('Each tag must be a string')
         .notEmpty().withMessage('Tags cannot be empty strings'),
 
     body('instructions')
         .optional()
+        .trim()
         .isString().withMessage('Instructions must be a string')
-        .trim(),
+        .isLength({ max: 5000 }).withMessage('Instructions cannot exceed 5000 characters'),
 
     body('isActive')
         .optional()
-        .isBoolean().withMessage('isActive must be a boolean'),
+        .isBoolean().withMessage('isActive must be a boolean').toBoolean(),
 
     body('isPublic')
         .optional()
-        .isBoolean().withMessage('isPublic must be a boolean'),
+        .isBoolean().withMessage('isPublic must be a boolean').toBoolean(),
 
     // Proctoring settings
-    body('requireWebcam').optional().isBoolean().withMessage('requireWebcam must be a boolean'),
-    body('requireMicrophone').optional().isBoolean().withMessage('requireMicrophone must be a boolean'),
-    body('allowTabSwitch').optional().isBoolean().withMessage('allowTabSwitch must be a boolean'),
-    body('maxTabSwitches').optional().isInt({ min: 0 }).withMessage('maxTabSwitches must be a non-negative integer'),
-    body('allowFullscreenExit').optional().isBoolean().withMessage('allowFullscreenExit must be a boolean'),
-    body('maxFullscreenExits').optional().isInt({ min: 0 }).withMessage('maxFullscreenExits must be a non-negative integer'),
-    body('enableRecording').optional().isBoolean().withMessage('enableRecording must be a boolean'),
+    body('requireWebcam').optional().isBoolean().withMessage('requireWebcam must be a boolean').toBoolean(),
+    body('requireMicrophone').optional().isBoolean().withMessage('requireMicrophone must be a boolean').toBoolean(),
+    body('allowTabSwitch').optional().isBoolean().withMessage('allowTabSwitch must be a boolean').toBoolean(),
+    body('maxTabSwitches').optional().isInt({ min: 0, max: 10 }).withMessage('maxTabSwitches must be between 0 and 10').toInt(),
+    body('allowFullscreenExit').optional().isBoolean().withMessage('allowFullscreenExit must be a boolean').toBoolean(),
+    body('maxFullscreenExits').optional().isInt({ min: 0, max: 10 }).withMessage('maxFullscreenExits must be between 0 and 10').toInt(),
+    body('enableRecording').optional().isBoolean().withMessage('enableRecording must be a boolean').toBoolean(),
 
     validate
 ];

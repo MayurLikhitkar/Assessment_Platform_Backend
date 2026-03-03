@@ -7,7 +7,7 @@ export interface TokenPayload {
     role: string;
 }
 
-export interface AuthRequest extends Request {
+export interface CustomRequest extends Request {
     user?: TokenPayload;
 }
 

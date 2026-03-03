@@ -33,21 +33,19 @@ export enum DatabaseType {
     SQLITE = 'sqlite',
 }
 
-export interface ITestCase {
-    id: number;
+export interface ITestCase extends Document {
     input: string;
     expectedOutput: string;
     isPublic: boolean;
     points: number;
 }
 
-export interface IOption {
-    id: number;
+export interface IOption extends Document {
     text: string;
     isCorrect: boolean;
 }
 
-export interface IEvaluationRubric {
+export interface IEvaluationRubric extends Document {
     criteria: string;
     maxScore: number;
     description?: string;
@@ -59,7 +57,6 @@ export interface IQuestion extends Document {
     question: string;
     marks: number;
     difficulty: Difficulty;
-    categoryId: Types.ObjectId;
     tags: string[];
     isActive: boolean;
     createdBy: Types.ObjectId;
@@ -79,8 +76,8 @@ export interface IQuestion extends Document {
     testCases?: ITestCase[];
     constraints?: string;
     hints?: string[];
-    timeLimit?: number; // in seconds
-    memoryLimit?: number; // in MB
+    timeLimitInSeconds: number; // in seconds
+    memoryLimitInMB: number; // in MB
 
     databaseType?: DatabaseType;
     databaseSchema?: string;
@@ -95,10 +92,6 @@ export interface IQuestion extends Document {
 
 const TestCaseSchema = new Schema<ITestCase>(
     {
-        id: {
-            type: Number,
-            required: [true, 'Test case ID is required']
-        },
         input: {
             type: String,
             required: [true, 'Test case input is required'],
@@ -118,16 +111,11 @@ const TestCaseSchema = new Schema<ITestCase>(
             default: 1,
             min: [0, 'Points cannot be negative']
         },
-    },
-    { _id: false }
+    }
 );
 
 const OptionSchema = new Schema<IOption>(
     {
-        id: {
-            type: Number,
-            required: [true, 'Option ID is required']
-        },
         text: {
             type: String,
             required: [true, 'Option text is required'],
@@ -138,8 +126,7 @@ const OptionSchema = new Schema<IOption>(
             type: Boolean,
             default: false
         },
-    },
-    { _id: false }
+    }
 );
 
 const RubricSchema = new Schema<IEvaluationRubric>(
@@ -158,8 +145,7 @@ const RubricSchema = new Schema<IEvaluationRubric>(
             type: String,
             trim: true
         },
-    },
-    { _id: false }
+    }
 );
 
 const questionSchema = new Schema<IQuestion>(
@@ -202,12 +188,6 @@ const questionSchema = new Schema<IQuestion>(
             required: [true, 'Difficulty level is required'],
             index: true
         },
-        categoryId: {
-            type: Schema.Types.ObjectId,
-            required: [true, 'Category ID is required'],
-            ref: 'AssessmentCategory',
-            index: true
-        },
         tags: {
             type: [String],
             default: [],
@@ -225,10 +205,12 @@ const questionSchema = new Schema<IQuestion>(
         },
         createdBy: {
             type: Schema.Types.ObjectId,
+            required:true,
             ref: 'User',
         },
         updatedBy: {
             type: Schema.Types.ObjectId,
+            required:true,
             ref: 'User',
         },
 
@@ -297,12 +279,12 @@ const questionSchema = new Schema<IQuestion>(
             type: [String],
             default: []
         },
-        timeLimit: {
+        timeLimitInSeconds: {
             type: Number,
             min: [1, 'Time limit must be at least 1 second'],
             max: [300, 'Time limit cannot exceed 300 seconds']
         },
-        memoryLimit: {
+        memoryLimitInMB: {
             type: Number,
             min: [1, 'Memory limit must be at least 1 MB'],
             max: [512, 'Memory limit cannot exceed 512 MB']
@@ -416,7 +398,7 @@ questionSchema.methods.isCorrectAnswer = function (
             if (!this.options) return false;
             const correctIds = this.options
                 .filter((opt: IOption) => opt.isCorrect)
-                .map((opt: IOption) => opt.id);
+                .map((opt: IOption) => opt._id);
 
             if (Array.isArray(userAnswer)) {
                 return (

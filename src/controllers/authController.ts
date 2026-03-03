@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import userModel, { IUser } from '../models/userModel';
 import { generateTokens, verifyToken } from '../utils/jwt';
 import { HttpStatus, MESSAGE } from '../utils/constants';
-import { AuthRequest, ChangePasswordRequest } from '../types/authTypes';
+import { CustomRequest, ChangePasswordRequest } from '../types/authTypes';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 
 export const register = async (req: Request, res: Response) => {
@@ -63,7 +63,7 @@ export const login = async (req: Request, res: Response) => {
     return res.status(HttpStatus.OK).json(successResponse(MESSAGE.AUTHENTICATION_SUCCESS, { ...tokens, user: userWithoutPassword }));
 };
 
-export const logout = async (req: AuthRequest, res: Response) => {
+export const logout = async (req: CustomRequest, res: Response) => {
     // In a real application, you might want to blacklist the token
     return res.status(HttpStatus.OK).json(successResponse(MESSAGE.LOGGED_OUT_SUCCESSFULLY));
 };
@@ -96,7 +96,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     return res.status(HttpStatus.OK).json(successResponse(MESSAGE.AUTHENTICATION_SUCCESS, tokens));
 };
 
-export const getProfile = async (req: AuthRequest, res: Response) => {
+export const getProfile = async (req: CustomRequest, res: Response) => {
     const { email } = req.user!;
 
     const user = await userModel.findOne({ email })
@@ -109,7 +109,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
     return res.status(HttpStatus.OK).json(successResponse('Account details fetched successfully', user));
 };
 
-export const updateProfile = async (req: AuthRequest, res: Response) => {
+export const updateProfile = async (req: CustomRequest, res: Response) => {
     const { fullName, phone, skills, experience } = req.body as IUser;
     const { email } = req.user!;
 
@@ -133,7 +133,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     return res.status(HttpStatus.OK).json(successResponse('Account updated successfully', updatedUser));
 };
 
-export const changePassword = async (req: AuthRequest, res: Response) => {
+export const changePassword = async (req: CustomRequest, res: Response) => {
     const { currentPassword, newPassword, confirmPassword } = req.body as ChangePasswordRequest;
     const { email } = req.user!;
 

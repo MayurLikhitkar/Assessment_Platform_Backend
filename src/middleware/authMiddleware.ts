@@ -2,12 +2,12 @@ import { Response, NextFunction } from 'express';
 import userModel from '../models/userModel';
 import { verifyToken } from '../utils/jwt';
 import { HttpStatus } from '../utils/constants';
-import { AuthRequest } from '../types/authTypes';
+import { CustomRequest } from '../types/authTypes';
 import { errorResponse } from '../utils/responseHandler';
 import logger from '../utils/logger';
 
 export const authenticate = async (
-    request: AuthRequest,
+    request: CustomRequest,
     response: Response,
     next: NextFunction
 ) => {
@@ -50,7 +50,7 @@ export const authenticate = async (
 };
 
 export const authorize = (...roles: string[]) => {
-    return (req: AuthRequest, res: Response, next: NextFunction) => {
+    return (req: CustomRequest, res: Response, next: NextFunction) => {
         if (!req.user) {
             logger.warn('Unauthorized: missing user payload');
             return res.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Unauthorized', 'Payload Not Found'));

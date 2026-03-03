@@ -3,7 +3,7 @@ import { QueryFilter, Types } from 'mongoose';
 import * as csv from 'csv-parser';
 import { Readable } from 'node:stream';
 import questionModel, { IQuestion } from '../models/questionModel';
-import { AuthRequest } from '../types/authTypes';
+import { CustomRequest } from '../types/authTypes';
 import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 
@@ -12,7 +12,7 @@ import { errorResponse, successResponse } from '../utils/responseHandler';
  * @route GET /api/questions
  * @access Private
  */
-export const getQuestions = async (req: AuthRequest, res: Response) => {
+export const getQuestions = async (req: CustomRequest, res: Response) => {
     const {
         type,
         difficulty,
@@ -90,7 +90,7 @@ export const getQuestions = async (req: AuthRequest, res: Response) => {
  * @route GET /api/questions/:id
  * @access Private
  */
-export const getQuestionById = async (req: AuthRequest, res: Response) => {
+export const getQuestionById = async (req: CustomRequest, res: Response) => {
     const question = await questionModel
         .findOne({ id: Number(req.params.id) })
         .select('-__v')
@@ -114,7 +114,7 @@ export const getQuestionById = async (req: AuthRequest, res: Response) => {
  * @route POST /api/questions
  * @access Private (Admin/Super Admin)
  */
-export const createQuestion = async (req: AuthRequest, res: Response) => {
+export const createQuestion = async (req: CustomRequest, res: Response) => {
     if (!req.user?.userId) {
         return res.status(HttpStatus.UNAUTHORIZED).json(
             errorResponse('Authentication required', 'User must be authenticated to create a question')
@@ -209,7 +209,7 @@ export const createQuestion = async (req: AuthRequest, res: Response) => {
  * @route PUT /api/questions/:id
  * @access Private (Admin/Super Admin)
  */
-export const updateQuestion = async (req: AuthRequest, res: Response) => {
+export const updateQuestion = async (req: CustomRequest, res: Response) => {
     if (!req.user?.userId) {
         return res.status(HttpStatus.UNAUTHORIZED).json(
             errorResponse('Authentication required', 'User must be authenticated to update a question')
@@ -265,7 +265,7 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
  * @route DELETE /api/questions/:id
  * @access Private (Admin/Super Admin)
  */
-export const deleteQuestion = async (req: AuthRequest, res: Response) => {
+export const deleteQuestion = async (req: CustomRequest, res: Response) => {
     if (!req.user?.userId) {
         return res.status(HttpStatus.UNAUTHORIZED).json(
             errorResponse('Authentication required', 'User must be authenticated to delete a question')
@@ -300,7 +300,7 @@ export const deleteQuestion = async (req: AuthRequest, res: Response) => {
  * @route GET /api/questions/category/:categoryId
  * @access Private
  */
-export const getQuestionsByCategory = async (req: AuthRequest, res: Response) => {
+export const getQuestionsByCategory = async (req: CustomRequest, res: Response) => {
     const { page = 1, limit = 10 } = req.query;
 
     const pageNumber = Math.max(Number(page), 1);
@@ -345,7 +345,7 @@ export const getQuestionsByCategory = async (req: AuthRequest, res: Response) =>
  * @route POST /api/questions/import
  * @access Private (Admin/Super Admin)
  */
-export const importQuestions = async (req: AuthRequest, res: Response) => {
+export const importQuestions = async (req: CustomRequest, res: Response) => {
     if (!req.user?.userId) {
         return res.status(HttpStatus.UNAUTHORIZED).json(
             errorResponse('Authentication required', 'User must be authenticated to import questions')
@@ -437,7 +437,7 @@ export const importQuestions = async (req: AuthRequest, res: Response) => {
  * @route GET /api/questions/export
  * @access Private (Admin/Super Admin)
  */
-export const exportQuestions = async (_req: AuthRequest, res: Response) => {
+export const exportQuestions = async (_req: CustomRequest, res: Response) => {
     const questions = await questionModel.find().lean().exec();
 
     const csvData = questions.map((q) => ({

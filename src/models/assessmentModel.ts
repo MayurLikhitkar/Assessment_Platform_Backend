@@ -1,13 +1,28 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
+export enum AssessmentType {
+    APTITUDE = 'aptitude',
+    CODING = 'coding',
+    QUERY = 'query',
+    SUBJECTIVE = 'subjective',
+    MCQ = 'mcq',
+}
+
+export enum AssessmentDifficulty {
+    BEGINNER = 'beginner',
+    INTERMEDIATE = 'intermediate',
+    ADVANCED = 'advanced',
+    EXPERT = 'expert',
+}
+
 export interface IAssessment extends Document {
     id: number;
     title: string;
     description: string;
-    type: ('aptitude' | 'coding' | 'query' | 'subjective')[];
-    difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
-    duration: number;
+    type: AssessmentType[];
+    difficulty: AssessmentDifficulty;
+    durationInMinutes: number;
     totalMarks: number;
     passingMarks: number;
     questions: Types.ObjectId[];
@@ -50,20 +65,21 @@ const assessmentSchema = new Schema<IAssessment>(
             type: String,
             maxlength: 1000
         },
-        type: [{
-            type: String,
-            enum: ['aptitude', 'coding', 'query', 'subjective'],
+        type: {
+            type: [String],
+            enum: Object.values(AssessmentType),
             required: true,
-        }],
+        },
         difficulty: {
             type: String,
-            enum: ['beginner', 'intermediate', 'advanced', 'expert'],
-            default: 'intermediate',
+            enum: Object.values(AssessmentDifficulty),
+            default: AssessmentDifficulty.INTERMEDIATE,
         },
-        duration: {
+        durationInMinutes: {
             type: Number,
             required: true,
-            min: 1 // in minutes
+            min: 10,
+            max: 240
         },
         totalMarks: {
             type: Number,
@@ -75,11 +91,11 @@ const assessmentSchema = new Schema<IAssessment>(
             required: true,
             min: 0
         },
-        questions: [{
-            type: Schema.Types.ObjectId,
+        questions: {
+            type: [Schema.Types.ObjectId],
             required: true,
             ref: 'Question'
-        }],
+        },
         createdBy: {
             type: Schema.Types.ObjectId,
             required: true,

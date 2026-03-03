@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import categoryModel from '../models/categoryModel';
-import { AuthRequest } from '../types/authTypes';
+import { CustomRequest } from '../types/authTypes';
 import questionModel from '../models/questionModel';
 
 export const getCategories = async (req: Request, res: Response) => {
@@ -29,7 +29,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
     }
 };
 
-export const createCategory = async (req: AuthRequest, res: Response) => {
+export const createCategory = async (req: CustomRequest, res: Response) => {
     try {
         // Validate request
         const errors = validationResult(req);
@@ -62,7 +62,7 @@ export const createCategory = async (req: AuthRequest, res: Response) => {
     }
 };
 
-export const updateCategory = async (req: AuthRequest, res: Response) => {
+export const updateCategory = async (req: CustomRequest, res: Response) => {
     try {
         // Validate request
         const errors = validationResult(req);
@@ -95,7 +95,7 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
     }
 };
 
-export const deleteCategory = async (req: AuthRequest, res: Response) => {
+export const deleteCategory = async (req: CustomRequest, res: Response) => {
     try {
         const category = await categoryModel.findOne({
             id: Number(req.params.id),

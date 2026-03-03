@@ -4,7 +4,7 @@ import { GetAssessmentQuery } from '../types/assessmentTypes';
 import { QueryFilter, startSession } from 'mongoose';
 import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
-import { AuthRequest } from '../types/authTypes';
+import { CustomRequest } from '../types/authTypes';
 import questionModel from '../models/questionModel';
 import logger from '../utils/logger';
 
@@ -29,7 +29,7 @@ const dateRangeFilter = (startDate?: Date, endDate?: Date) => {
  * @route GET /api/assessments
  * @access Private
  */
-export const getAssessments = async (req: AuthRequest, res: Response) => {
+export const getAssessments = async (req: CustomRequest, res: Response) => {
     const { page = 1, limit = 10, search, categoryId, difficulty, type, isActive, isPublic, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query as unknown as GetAssessmentQuery;
 
     const pageNumber = Math.max(Number(page), 1);
@@ -123,7 +123,7 @@ export const getAssessments = async (req: AuthRequest, res: Response) => {
  * @route GET /api/assessments/:id
  * @access Private
  */
-export const getAssessmentById = async (req: AuthRequest, res: Response) => {
+export const getAssessmentById = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
     const assessment = await assessmentModel
         .findOne({
@@ -159,7 +159,7 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
  * @route POST /api/assessments
  * @access Private (Instructor/Admin)
  */
-export const createAssessment = async (req: AuthRequest, res: Response) => {
+export const createAssessment = async (req: CustomRequest, res: Response) => {
     // Ensure authenticated user exists
     if (!req.user?.userId) {
         return res.status(HttpStatus.UNAUTHORIZED).json(
@@ -170,29 +170,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
     logger.info('User: ', req.user);
     logger.info('Body: ', req.body);
 
-    const {
-        title,
-        description,
-        type,
-        difficulty,
-        duration,
-        passingMarks,
-        questions,
-        startDate,
-        endDate,
-        tags,
-        instructions,
-        isActive,
-        isPublic,
-        // Proctoring settings
-        requireWebcam,
-        requireMicrophone,
-        allowTabSwitch,
-        maxTabSwitches,
-        allowFullscreenExit,
-        maxFullscreenExits,
-        enableRecording,
-    } = req.body as IAssessment;
+    const { title, description, type, difficulty, durationInMinutes, passingMarks, questions, startDate, endDate, tags, instructions, isActive, isPublic, requireWebcam, requireMicrophone, allowTabSwitch, maxTabSwitches, allowFullscreenExit, maxFullscreenExits, enableRecording, } = req.body as IAssessment;
 
     // Validate startDate is not in the past (checked independently of endDate)
     if (startDate && new Date(startDate) < new Date()) {
@@ -209,7 +187,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
     }
 
     // Validate duration
-    if (duration !== undefined && duration < 1) {
+    if (durationInMinutes !== undefined && durationInMinutes < 1) {
         return res.status(HttpStatus.BAD_REQUEST).json(
             errorResponse('Invalid duration', 'Duration must be at least 1 minute')
         );
@@ -220,7 +198,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
     session.startTransaction();
 
     try {
-        // Deduplicate question IDs (questions is number[] per the model)
+        // Deduplicate question IDs (questions is ObjectId[] per the model)
         const uniqueQuestionIds = [...new Set(questions)];
 
         // Validate that all question IDs exist and are active
@@ -267,7 +245,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
             description,
             type,
             difficulty,
-            duration,
+            durationInMinutes,
             totalMarks: calculatedTotalMarks,
             passingMarks,
             questions: uniqueQuestionIds,
@@ -310,7 +288,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
     }
 };
 
-// export const updateAssessment = async (req: AuthRequest, res: Response) => {
+// export const updateAssessment = async (req: CustomRequest, res: Response) => {
 //     try {
 //         const errors = validationResult(req);
 //         if (!errors.isEmpty()) {
@@ -348,7 +326,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 //     }
 // };
 
-// export const deleteAssessment = async (req: AuthRequest, res: Response) => {
+// export const deleteAssessment = async (req: CustomRequest, res: Response) => {
 //     try {
 //         const assessment = await assessmentModel.findOne({
 //             assessmentId: req.params.id,
@@ -376,7 +354,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 //     }
 // };
 
-// export const getUserAssessments = async (req: AuthRequest, res: Response) => {
+// export const getUserAssessments = async (req: CustomRequest, res: Response) => {
 //     try {
 //         const userId = req.params.userId;
 
@@ -394,7 +372,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 //     }
 // };
 
-// export const startAssessment = async (req: AuthRequest, res: Response) => {
+// export const startAssessment = async (req: CustomRequest, res: Response) => {
 //     try {
 //         const assessment = await assessmentModel.findOne({
 //             assessmentId: req.params.id,
@@ -473,7 +451,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 //     }
 // };
 
-// export const submitAnswer = async (req: AuthRequest, res: Response) => {
+// export const submitAnswer = async (req: CustomRequest, res: Response) => {
 //     try {
 //         const { userAssessmentId, questionId, answer, timeTaken } = req.body;
 
@@ -555,7 +533,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 //     }
 // };
 
-// export const completeAssessment = async (req: AuthRequest, res: Response) => {
+// export const completeAssessment = async (req: CustomRequest, res: Response) => {
 //     try {
 //         const { userAssessmentId, recordingUrl, violations } = req.body;
 
@@ -634,7 +612,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 //     }
 // };
 
-// export const evaluateCodingAnswer = async (req: AuthRequest, res: Response) => {
+// export const evaluateCodingAnswer = async (req: CustomRequest, res: Response) => {
 //     try {
 //         const { userAssessmentId, questionId, code, language } = req.body;
 
