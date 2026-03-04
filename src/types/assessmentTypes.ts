@@ -1,14 +1,17 @@
+import { AssessmentDifficulty, AssessmentType, IAssessment } from "../models/assessmentModel";
+
+export type AssessmentSortableFields = Pick<IAssessment, 'createdAt' | 'title' | 'difficulty' | 'durationInMinutes' | 'startDate' | 'endDate'>;
+
 export interface GetAssessmentQuery {
     search?: string;
-    isPublic?: boolean | string;
-    categoryId?: number;
-    type?: ('aptitude' | 'coding' | 'query' | 'subjective') | ('aptitude' | 'coding' | 'query' | 'subjective')[];
-    difficulty?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
-    isActive?: boolean | string;
+    type?: AssessmentType;
+    difficulty?: AssessmentDifficulty;
+    isActive?: boolean;
+    isPublic?: boolean;
     page?: number;
     limit?: number;
     startDate?: Date;
     endDate?: Date;
-    sortBy?: string;
+    sortBy?: keyof AssessmentSortableFields;
     sortOrder?: 'asc' | 'desc';
 }

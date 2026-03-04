@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import authRoutes from './routes/authRoutes';
-import categoryRoutes from './routes/categoryRoutes';
 import assessmentRoutes from './routes/assessmentsRoutes';
 import connectDB from './config/connectDB';
 import { ALLOWED_ORIGIN, PORT } from './config/envConfig';
@@ -27,7 +26,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
-// app.use('/api/categories', categoryRoutes);
 app.use('/api/assessments', assessmentRoutes);
 
 // Health check

@@ -7,9 +7,9 @@ const { combine, timestamp, printf, colorize, errors, splat, json } = winston.fo
 const colors = {
     error: 'red',
     warn: 'yellow',
-    info: 'blue',
+    info: 'cyan',
     http: 'magenta',
-    debug: 'cyan'
+    debug: 'yellow'
 };
 
 winston.addColors(colors);

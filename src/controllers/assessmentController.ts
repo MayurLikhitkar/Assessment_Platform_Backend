@@ -5,7 +5,6 @@ import { QueryFilter, startSession } from 'mongoose';
 import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 import { CustomRequest } from '../types/authTypes';
-import questionModel from '../models/questionModel';
 import logger from '../utils/logger';
 
 /** Build a createdAt date-range filter, or undefined if no dates provided */
@@ -30,41 +29,32 @@ const dateRangeFilter = (startDate?: Date, endDate?: Date) => {
  * @access Private
  */
 export const getAssessments = async (req: CustomRequest, res: Response) => {
-    const { page = 1, limit = 10, search, categoryId, difficulty, type, isActive, isPublic, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query as unknown as GetAssessmentQuery;
+    const { page = 1, limit = 10, search, difficulty, type, isActive, isPublic, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query as unknown as GetAssessmentQuery;
 
-    const pageNumber = Math.max(Number(page), 1);
-    const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
 
     const filter: QueryFilter<IAssessment> = {};
 
-    if (search?.trim()) {
-        const searchRegex = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        filter.$or = [
-            { title: searchRegex },
-            { description: searchRegex },
-            { tags: searchRegex }
-        ];
+    if (search) {
+        filter.$text = { $search: search };
     }
 
-
     if (difficulty) {
-        filter.difficulty = Array.isArray(difficulty)
-            ? { $in: difficulty }
-            : difficulty;
+        filter.difficulty = difficulty;
     }
 
     if (type) {
-        filter.type = { $in: Array.isArray(type) ? type : [type] };
+        filter.type = type;
     }
 
     if (isActive !== undefined) {
-        filter.isActive = isActive === 'true' || isActive === true;
+        filter.isActive = isActive;
     }
 
-    // Public status filter
     if (isPublic !== undefined) {
-        filter.isPublic = isPublic === 'true' || isPublic === true;
+        filter.isPublic = isPublic;
     }
 
     const dateRange = dateRangeFilter(startDate, endDate);
@@ -79,11 +69,10 @@ export const getAssessments = async (req: CustomRequest, res: Response) => {
     const [assessments, total] = await Promise.all([
         assessmentModel
             .find(filter)
-            .select('-__v') // Exclude version key
+            .select('-__v')
             .sort(sortOptions)
             .skip(skip)
             .limit(limitNumber)
-            .populate('createdBy', 'fullName email')
             .lean()
             .exec(),
         assessmentModel.countDocuments(filter).exec()
@@ -105,7 +94,6 @@ export const getAssessments = async (req: CustomRequest, res: Response) => {
             },
             filters: {
                 search,
-                categoryId,
                 difficulty,
                 type,
                 isActive,
@@ -132,7 +120,6 @@ export const getAssessmentById = async (req: CustomRequest, res: Response) => {
                 { id: Number(id) }
             ]
         })
-        .populate('createdBy', 'fullName email')
         .lean()
         .exec();
 
@@ -160,84 +147,16 @@ export const getAssessmentById = async (req: CustomRequest, res: Response) => {
  * @access Private (Instructor/Admin)
  */
 export const createAssessment = async (req: CustomRequest, res: Response) => {
-    // Ensure authenticated user exists
-    if (!req.user?.userId) {
-        return res.status(HttpStatus.UNAUTHORIZED).json(
-            errorResponse('Authentication required', 'User must be authenticated to create an assessment')
-        );
-    }
-
-    logger.info('User: ', req.user);
-    logger.info('Body: ', req.body);
-
-    const { title, description, type, difficulty, durationInMinutes, passingMarks, questions, startDate, endDate, tags, instructions, isActive, isPublic, requireWebcam, requireMicrophone, allowTabSwitch, maxTabSwitches, allowFullscreenExit, maxFullscreenExits, enableRecording, } = req.body as IAssessment;
-
-    // Validate startDate is not in the past (checked independently of endDate)
-    if (startDate && new Date(startDate) < new Date()) {
-        return res.status(HttpStatus.BAD_REQUEST).json(
-            errorResponse('Invalid start date', 'Start date cannot be in the past')
-        );
-    }
-
-    // Validate date ordering when both dates are provided
-    if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
-        return res.status(HttpStatus.BAD_REQUEST).json(
-            errorResponse('Invalid date range', 'End date must be after start date')
-        );
-    }
-
-    // Validate duration
-    if (durationInMinutes !== undefined && durationInMinutes < 1) {
-        return res.status(HttpStatus.BAD_REQUEST).json(
-            errorResponse('Invalid duration', 'Duration must be at least 1 minute')
-        );
-    }
 
     // Start a database transaction
     const session = await startSession();
     session.startTransaction();
 
     try {
-        // Deduplicate question IDs (questions is ObjectId[] per the model)
-        const uniqueQuestionIds = [...new Set(questions)];
 
-        // Validate that all question IDs exist and are active
-        const existingQuestions = await questionModel
-            .find({
-                _id: { $in: uniqueQuestionIds },
-                isActive: true
-            })
-            .select('id marks')
-            .lean()
-            .session(session)
-            .exec();
+        const { title, description, type, difficulty, durationInMinutes, startDate, endDate, tags, instructions, requireWebcam, requireMicrophone, allowTabSwitch, maxTabSwitches, allowFullscreenExit, maxFullscreenExits, enableRecording, } = req.body as IAssessment;
 
-        if (existingQuestions.length !== uniqueQuestionIds.length) {
-            const foundIds = new Set(existingQuestions.map(q => q._id));
-            const missingIds = uniqueQuestionIds.filter(id => !foundIds.has(id));
-
-            await session.abortTransaction();
-            return res.status(HttpStatus.BAD_REQUEST).json(
-                errorResponse(
-                    'Questions not found or inactive',
-                    `The following question IDs were not found or are inactive: ${missingIds.join(', ')}`
-                )
-            );
-        }
-
-        // Calculate total marks from validated questions (single pass)
-        const calculatedTotalMarks = existingQuestions.reduce((sum, q) => sum + q.marks, 0);
-
-        // Validate passing marks against total marks
-        if (passingMarks > calculatedTotalMarks) {
-            await session.abortTransaction();
-            return res.status(HttpStatus.BAD_REQUEST).json(
-                errorResponse(
-                    'Invalid passing marks',
-                    `Passing marks (${passingMarks}) cannot exceed total marks (${calculatedTotalMarks})`
-                )
-            );
-        }
+        const { _id: userId } = req.user!;
 
         // Build and save the assessment document
         const assessment = new assessmentModel({
@@ -246,16 +165,12 @@ export const createAssessment = async (req: CustomRequest, res: Response) => {
             type,
             difficulty,
             durationInMinutes,
-            totalMarks: calculatedTotalMarks,
-            passingMarks,
-            questions: uniqueQuestionIds,
             tags,
             instructions,
-            isActive: isActive !== false,  // Default to true
-            isPublic: isPublic === true,   // Default to false
             startDate,
             endDate,
-            createdBy: req.user.userId,
+            createdBy: userId,
+            updatedBy: userId,
             // Proctoring settings
             requireWebcam,
             requireMicrophone,
@@ -272,7 +187,6 @@ export const createAssessment = async (req: CustomRequest, res: Response) => {
         // Populate the saved assessment for the response (outside transaction)
         const populatedAssessment = await assessmentModel
             .findById(assessment._id)
-            .populate('createdBy', 'fullName email')
             .select('-__v')
             .lean()
             .exec();

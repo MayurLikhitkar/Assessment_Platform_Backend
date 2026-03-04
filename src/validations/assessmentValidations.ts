@@ -8,19 +8,22 @@ export const getAssessmentsValidation = [
     query('search').optional().trim().isString(),
     query('difficulty')
         .optional()
-        .isIn(['beginner', 'intermediate', 'advanced', 'expert'])
-        .withMessage('Difficulty must be beginner, intermediate, advanced, or expert'),
+        .isIn(Object.values(AssessmentDifficulty))
+        .withMessage('Difficulty must be one of: ' + Object.values(AssessmentDifficulty).join(', ')),
     query('type')
         .optional()
-        .custom((value) => {
-            const types = Array.isArray(value) ? value : [value];
-            const validTypes = new Set(['aptitude', 'coding', 'query', 'subjective']);
-            return types.every((t: string) => validTypes.has(t));
-        })
-        .withMessage('Invalid assessment type provided'),
+        .isIn(Object.values(AssessmentType))
+        .withMessage('Type must be one of: ' + Object.values(AssessmentType).join(', ')),
     query('isActive').optional().isBoolean().withMessage('isActive must be a boolean').toBoolean(),
     query('isPublic').optional().isBoolean().withMessage('isPublic must be a boolean').toBoolean(),
-    query('sortBy').optional().isString().trim(),
+    query('sortBy')
+        .optional()
+        .isIn(['createdAt', 'title', 'difficulty', 'durationInMinutes', 'startDate', 'endDate'])
+        .withMessage('sortBy must be one of: createdAt, title, difficulty, durationInMinutes, startDate, endDate'),
+    query('sortOrder')
+        .optional()
+        .isIn(['asc', 'desc'])
+        .withMessage('sortOrder must be asc or desc'),
     query('startDate').optional().isISO8601().withMessage('Invalid start date format').toDate(),
     query('endDate').optional().isISO8601().withMessage('Invalid end date format').toDate(),
 
@@ -46,10 +49,10 @@ export const createAssessmentValidation = [
             const validTypes = new Set(Object.values(AssessmentType));
             return types.every((t) => validTypes.has(t));
         })
-        .withMessage('Each type must be one of: ' + Object.values(AssessmentType).join(', ')),
+        .withMessage('Type must be one of: ' + Object.values(AssessmentType).join(', ')),
 
     body('difficulty')
-        .optional({ values: 'falsy' })
+        .optional()
         .trim()
         .isIn(Object.values(AssessmentDifficulty))
         .withMessage('Difficulty must be one of: ' + Object.values(AssessmentDifficulty).join(', ')),
@@ -58,17 +61,6 @@ export const createAssessmentValidation = [
         .notEmpty().withMessage('Duration is required')
         .isInt({ min: 10, max: 240 }).withMessage('Duration must be between 10 and 240 minutes')
         .toInt(),
-
-    body('passingMarks')
-        .notEmpty().withMessage('Passing marks is required')
-        .isInt({ min: 0 }).withMessage('Passing marks must be a non-negative integer')
-        .toInt(),
-
-    body('questions')
-        .isArray({ min: 1 }).withMessage('Questions must be a non-empty array of question IDs'),
-
-    body('questions.*')
-        .isMongoId().withMessage('Each question ID must be a valid MongoDB ObjectId'),
 
     body('startDate')
         .optional()
@@ -107,14 +99,6 @@ export const createAssessmentValidation = [
         .trim()
         .isString().withMessage('Instructions must be a string')
         .isLength({ max: 5000 }).withMessage('Instructions cannot exceed 5000 characters'),
-
-    body('isActive')
-        .optional()
-        .isBoolean().withMessage('isActive must be a boolean').toBoolean(),
-
-    body('isPublic')
-        .optional()
-        .isBoolean().withMessage('isPublic must be a boolean').toBoolean(),
 
     // Proctoring settings
     body('requireWebcam').optional().isBoolean().withMessage('requireWebcam must be a boolean').toBoolean(),

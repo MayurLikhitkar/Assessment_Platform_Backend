@@ -4,6 +4,7 @@ import { createAssessment, getAssessmentById, getAssessments } from '../controll
 import { asyncHandler } from '../utils/asyncHandler';
 import { createAssessmentValidation, getAssessmentsValidation } from '../validations/assessmentValidations';
 import { UserRole } from '../models/userModel';
+import validatePayload from '../middleware/validatePayload';
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ router.get('/:id', asyncHandler(getAssessmentById));
 
 // Protected routes — require authentication
 router.use(authenticate);
+router.use(validatePayload);
 
 // Admin/Instructor routes
 router.post(

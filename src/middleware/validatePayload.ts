@@ -6,7 +6,7 @@ import { errorResponse } from "../utils/responseHandler";
 const validatePayload = (request: CustomRequest, response: Response, next: NextFunction) => {
     const payload = request.user;
     if (!payload) {
-        return response.status(HttpStatus.UNAUTHORIZED).json(errorResponse(MESSAGE.PAYLOAD_MISSING_OR_INVALID, 'Payload is missing or invalid'));
+        return response.status(HttpStatus.UNAUTHORIZED).json(errorResponse('Authentication required', MESSAGE.PAYLOAD_MISSING_OR_INVALID));
     }
     next();
 };

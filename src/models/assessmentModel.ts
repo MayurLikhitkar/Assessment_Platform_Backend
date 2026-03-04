@@ -83,12 +83,12 @@ const assessmentSchema = new Schema<IAssessment>(
         },
         totalMarks: {
             type: Number,
-            required: true,
-            min: 1
+            default: 0,
+            min: 0
         },
         passingMarks: {
             type: Number,
-            required: true,
+            default: 0,
             min: 0
         },
         questions: {
@@ -101,9 +101,14 @@ const assessmentSchema = new Schema<IAssessment>(
             required: true,
             ref: 'User'
         },
+        updatedBy: {
+            type: Schema.Types.ObjectId,
+            required: true,
+            ref: 'User'
+        },
         isActive: {
             type: Boolean,
-            default: true
+            default: false
         },
         isPublic: {
             type: Boolean,
@@ -128,6 +133,9 @@ const assessmentSchema = new Schema<IAssessment>(
     },
     { timestamps: true }
 );
+
+// Text index for $text search on title, description, and tags
+assessmentSchema.index({ title: 'text', description: 'text', tags: 'text', isActive: 1, isPublic: 1, type: 'text', difficulty: 'text' });
 
 // Pre-save hook to generate userId
 assessmentSchema.pre('save', async function () {
