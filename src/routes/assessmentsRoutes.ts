@@ -2,7 +2,7 @@ import express from 'express';
 import { authenticate, authorize } from '../middleware/authMiddleware';
 import { createAssessment, getAssessmentById, getAssessments } from '../controllers/assessmentController';
 import { asyncHandler } from '../utils/asyncHandler';
-import { createAssessmentValidation, getAssessmentsValidation } from '../validations/assessmentValidations';
+import { createAssessmentValidation, getAssessmentByIdValidation, getAssessmentsValidation } from '../validations/assessmentValidations';
 import { UserRole } from '../models/userModel';
 import validatePayload from '../middleware/validatePayload';
 
@@ -10,7 +10,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/', getAssessmentsValidation, asyncHandler(getAssessments));
-router.get('/:id', asyncHandler(getAssessmentById));
+router.get('/:id', getAssessmentByIdValidation, asyncHandler(getAssessmentById));
 // router.get('/:id/questions', getAssessmentQuestions);
 
 // Protected routes — require authentication

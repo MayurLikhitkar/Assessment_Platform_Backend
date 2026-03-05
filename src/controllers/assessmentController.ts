@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import assessmentModel, { IAssessment } from '../models/assessmentModel';
 import { GetAssessmentQuery } from '../types/assessmentTypes';
-import { QueryFilter, startSession } from 'mongoose';
+import { isValidObjectId, QueryFilter, startSession, Types } from 'mongoose';
 import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 import { CustomRequest } from '../types/authTypes';
@@ -113,13 +113,14 @@ export const getAssessments = async (req: CustomRequest, res: Response) => {
  */
 export const getAssessmentById = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
+
+    // Use Mongoose's official utility to determine lookup strategy
+    const filter: QueryFilter<IAssessment> = isValidObjectId(id)
+        ? { _id: new Types.ObjectId(id as string) }       // Valid ObjectId string → look up by _id
+        : { id: Number(id) }; // Otherwise → look up by numeric id
+
     const assessment = await assessmentModel
-        .findOne({
-            $or: [
-                { assessmentId: id },
-                { id: Number(id) }
-            ]
-        })
+        .findOne(filter)
         .lean()
         .exec();
 

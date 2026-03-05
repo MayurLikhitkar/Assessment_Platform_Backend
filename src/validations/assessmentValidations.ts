@@ -1,4 +1,4 @@
-import { body, query } from 'express-validator';
+import { body, oneOf, param, query } from 'express-validator';
 import validate from './validate';
 import { AssessmentDifficulty, AssessmentType } from '../models/assessmentModel';
 
@@ -108,6 +108,15 @@ export const createAssessmentValidation = [
     body('allowFullscreenExit').optional().isBoolean().withMessage('allowFullscreenExit must be a boolean').toBoolean(),
     body('maxFullscreenExits').optional().isInt({ min: 0, max: 10 }).withMessage('maxFullscreenExits must be between 0 and 10').toInt(),
     body('enableRecording').optional().isBoolean().withMessage('enableRecording must be a boolean').toBoolean(),
+
+    validate
+];
+
+export const getAssessmentByIdValidation = [
+    oneOf([
+        param('id').isMongoId(),
+        param('id').isInt({ min: 1 })
+    ], { message: 'ID must be a valid MongoDB ObjectId or a positive integer' }),
 
     validate
 ];
