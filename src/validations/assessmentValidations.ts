@@ -114,8 +114,8 @@ export const createAssessmentValidation = [
 
 export const getAssessmentByIdValidation = [
     oneOf([
-        param('id').isMongoId(),
-        param('id').isInt({ min: 1 })
+        param('id').isInt({ min: 1 }).withMessage('ID must be a positive integer'),
+        param('id').isMongoId().withMessage('ID must be a valid MongoDB ObjectId'),
     ], { message: 'ID must be a valid MongoDB ObjectId or a positive integer' }),
 
     validate

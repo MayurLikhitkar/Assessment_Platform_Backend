@@ -204,3 +204,8 @@ export const resetPassword = async (req: Request, res: Response) => {
 
     res.status(HttpStatus.OK).json(successResponse('Password reset successfully'));
 };
+
+export const getUsers = async (req: Request, res: Response) => {
+    const users = await userModel.find().select('-password');
+    res.status(HttpStatus.OK).json(successResponse('Users fetched successfully', users));
+};
