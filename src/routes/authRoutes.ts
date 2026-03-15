@@ -1,9 +1,10 @@
 import express from 'express';
-import { authenticate } from '../middleware/authMiddleware';
+import { authenticate, authorize } from '../middleware/authMiddleware';
 import { asyncHandler } from '../utils/asyncHandler';
-import { loginValidation, registerValidation } from '../validations/authValidation';
+import { loginValidation, addUserValidation, registerValidation } from '../validations/authValidation';
 import { changePassword, forgotPassword, getProfile, getUsers, login, logout, refreshToken, register, resetPassword, updateProfile } from '../controllers/authController';
 import validatePayload from '../middleware/validatePayload';
+import { UserRole } from '../models/userModel';
 
 const router = express.Router();
 
@@ -21,6 +22,10 @@ router.use(validatePayload);
 router.get('/profile', asyncHandler(getProfile));
 router.put('/profile', asyncHandler(updateProfile));
 router.put('/change-password', asyncHandler(changePassword));
-router.get('/users', asyncHandler(getUsers));
+
+// Admin routes
+router.get('/users', authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN), asyncHandler(getUsers));
+router.post('/addUser', authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN), addUserValidation, asyncHandler(register));
+
 
 export default router;

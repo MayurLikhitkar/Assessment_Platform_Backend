@@ -203,373 +203,135 @@ export const createAssessment = async (req: CustomRequest, res: Response) => {
     }
 };
 
-// export const updateAssessment = async (req: CustomRequest, res: Response) => {
-//     try {
-//         const errors = validationResult(req);
-//         if (!errors.isEmpty()) {
-//             return res.status(400).json({ errors: errors.array() });
-//         }
+/**
+ * Update assessment by ID
+ * @route PUT /api/assessments/:id
+ * @access Private (Admin/Super Admin)
+ */
+export const updateAssessment = async (req: CustomRequest, res: Response) => {
+    const { id } = req.params;
 
-//         const assessment = await assessmentModel.findOne({
-//             assessmentId: req.params.id,
-//         });
+    const filter: QueryFilter<IAssessment> = isValidObjectId(id)
+        ? { _id: new Types.ObjectId(id as string) }
+        : { id: Number(id) };
 
-//         if (!assessment) {
-//             return res.status(404).json({ message: 'Assessment not found' });
-//         }
+    const assessment = await assessmentModel.findOne(filter).exec();
+    if (!assessment) {
+        return res.status(HttpStatus.NOT_FOUND).json(
+            errorResponse('Assessment not found', 'No assessment found with the given ID')
+        );
+    }
 
-//         const updateData = req.body;
+    // Whitelist allowed update fields — prevent overwriting system fields
+    const {
+        title, description, type, difficulty, durationInMinutes,
+        totalMarks, passingMarks, questions,
+        isActive, isPublic, startDate, endDate, tags, instructions,
+        requireWebcam, requireMicrophone, allowTabSwitch,
+        maxTabSwitches, allowFullscreenExit, maxFullscreenExits, enableRecording,
+    } = req.body as Partial<IAssessment>;
 
-//         // Validate questions if being updated
-//         if (updateData.questions) {
-//             for (const q of updateData.questions) {
-//                 const question = await Question.findOne({ questionId: q.questionId });
-//                 if (!question) {
-//                     return res.status(400).json({
-//                         message: `Question ${q.questionId} not found`
-//                     });
-//                 }
-//             }
-//         }
+    if (title !== undefined) assessment.title = title;
+    if (description !== undefined) assessment.description = description;
+    if (type !== undefined) assessment.type = type;
+    if (difficulty !== undefined) assessment.difficulty = difficulty;
+    if (durationInMinutes !== undefined) assessment.durationInMinutes = durationInMinutes;
+    if (totalMarks !== undefined) assessment.totalMarks = totalMarks;
+    if (passingMarks !== undefined) assessment.passingMarks = passingMarks;
+    if (questions !== undefined) assessment.questions = questions;
+    if (isActive !== undefined) assessment.isActive = isActive;
+    if (isPublic !== undefined) assessment.isPublic = isPublic;
+    if (startDate !== undefined) assessment.startDate = startDate;
+    if (endDate !== undefined) assessment.endDate = endDate;
+    if (tags !== undefined) assessment.tags = tags;
+    if (instructions !== undefined) assessment.instructions = instructions;
+    if (requireWebcam !== undefined) assessment.requireWebcam = requireWebcam;
+    if (requireMicrophone !== undefined) assessment.requireMicrophone = requireMicrophone;
+    if (allowTabSwitch !== undefined) assessment.allowTabSwitch = allowTabSwitch;
+    if (maxTabSwitches !== undefined) assessment.maxTabSwitches = maxTabSwitches;
+    if (allowFullscreenExit !== undefined) assessment.allowFullscreenExit = allowFullscreenExit;
+    if (maxFullscreenExits !== undefined) assessment.maxFullscreenExits = maxFullscreenExits;
+    if (enableRecording !== undefined) assessment.enableRecording = enableRecording;
 
-//         Object.assign(assessment, updateData);
-//         await assessment.save();
+    // Track who updated
+    assessment.updatedBy = new Types.ObjectId(req.user!._id);
 
-//         res.json(assessment);
-//     } catch (error: any) {
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
+    await assessment.save();
 
-// export const deleteAssessment = async (req: CustomRequest, res: Response) => {
-//     try {
-//         const assessment = await assessmentModel.findOne({
-//             assessmentId: req.params.id,
-//         });
+    const updated = await assessmentModel
+        .findById(assessment._id)
+        .select('-__v')
+        .lean()
+        .exec();
 
-//         if (!assessment) {
-//             return res.status(404).json({ message: 'Assessment not found' });
-//         }
+    return res.status(HttpStatus.OK).json(
+        successResponse('Assessment updated successfully', updated)
+    );
+};
 
-//         // Check if there are any user assessments
-//         const userAssessmentCount = await UserAssessment.countDocuments({
-//             assessmentId: assessment.assessmentId,
-//         });
+/**
+ * Delete assessment by ID
+ * @route DELETE /api/assessments/:id
+ * @access Private (Admin/Super Admin)
+ */
+export const deleteAssessment = async (req: CustomRequest, res: Response) => {
+    const { id } = req.params;
 
-//         if (userAssessmentCount > 0) {
-//             return res.status(400).json({
-//                 message: 'Cannot delete assessment with existing attempts. Deactivate instead.',
-//             });
-//         }
+    const filter: QueryFilter<IAssessment> = isValidObjectId(id)
+        ? { _id: new Types.ObjectId(id as string) }
+        : { id: Number(id) };
 
-//         await assessment.deleteOne();
-//         res.json({ message: 'Assessment deleted successfully' });
-//     } catch (error: any) {
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
+    const assessment = await assessmentModel.findOne(filter).exec();
+    if (!assessment) {
+        return res.status(HttpStatus.NOT_FOUND).json(
+            errorResponse('Assessment not found', 'No assessment found with the given ID')
+        );
+    }
 
-// export const getUserAssessments = async (req: CustomRequest, res: Response) => {
-//     try {
-//         const userId = req.params.userId;
+    await assessment.deleteOne();
 
-//         if (req.user?.userId !== +userId && req.user?.role === 'user') {
-//             return res.status(403).json({ message: 'Forbidden' });
-//         }
+    logger.info(`Assessment ${assessment.id} deleted by user ${req.user!._id}`);
 
-//         const userAssessments = await UserAssessment.find({ userId })
-//             .populate('assessmentId', 'title description duration totalMarks')
-//             .sort({ createdAt: -1 });
+    return res.status(HttpStatus.OK).json(
+        successResponse('Assessment deleted successfully', null)
+    );
+};
 
-//         res.json(userAssessments);
-//     } catch (error: any) {
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
+/**
+ * Get assessments created by a specific user
+ * @route GET /api/assessments/user/:userId
+ * @access Private (own user or Admin/Super Admin)
+ */
+export const getUserAssessments = async (req: CustomRequest, res: Response) => {
+    const { userId } = req.params;
+    const numericUserId = Number(userId);
 
-// export const startAssessment = async (req: CustomRequest, res: Response) => {
-//     try {
-//         const assessment = await assessmentModel.findOne({
-//             assessmentId: req.params.id,
-//             isActive: true,
-//         });
+    // Permission check: users can only view their own, admins can view any
+    const isOwnUser = req.user!.userId === numericUserId;
+    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'super_admin';
 
-//         if (!assessment) {
-//             return res.status(404).json({ message: 'Assessment not found or inactive' });
-//         }
+    if (!isOwnUser && !isAdmin) {
+        return res.status(HttpStatus.FORBIDDEN).json(
+            errorResponse('Forbidden', 'You do not have permission to view these assessments')
+        );
+    }
 
-//         // Check if user already has an assessment in progress
-//         const existingUserAssessment = await userAssessmentModel.findOne({
-//             userId: req.user?.userId,
-//             assessmentId: assessment.assessmentId,
-//             status: { $in: ['assigned', 'in-progress'] },
-//         });
+    // Find the user's _id from the numeric id, then query assessments by createdBy
+    const userDoc = await import('../models/userModel').then(m => m.default.findOne({ id: numericUserId }).select('_id').lean().exec());
+    if (!userDoc) {
+        return res.status(HttpStatus.NOT_FOUND).json(
+            errorResponse('User not found', 'No user found with the given ID')
+        );
+    }
 
-//         if (existingUserAssessment) {
-//             return res.status(400).json({
-//                 message: 'You already have an assessment in progress',
-//                 userAssessmentId: existingUserAssessment.userAssessmentId,
-//             });
-//         }
+    const assessments = await assessmentModel
+        .find({ createdBy: userDoc._id })
+        .select('-__v')
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
 
-//         // Create user assessment
-//         const userAssessment = new userAssessmentModel({
-//             userId: req.user?.userId,
-//             assessmentId: assessment.assessmentId,
-//             status: 'in-progress',
-//             startedAt: new Date(),
-//             totalMarks: assessment.totalMarks,
-//             answers: [],
-//         });
-
-//         await userAssessment.save();
-
-//         // Create session
-//         const session = new sessionModel({
-//             userId: req.user?.userId,
-//             assessmentId: assessment.assessmentId,
-//             userAssessmentId: userAssessment.userAssessmentId,
-//             startTime: new Date(),
-//             lastActive: new Date(),
-//             ipAddress: req.ip,
-//             userAgent: req.headers['user-agent'],
-//             deviceInfo: {
-//                 os: 'Unknown',
-//                 browser: 'Unknown',
-//                 screenResolution: 'Unknown',
-//             },
-//         });
-
-//         await session.save();
-
-//         res.json({
-//             userAssessment,
-//             sessionId: session.sessionId,
-//             assessment: {
-//                 title: assessment.title,
-//                 duration: assessment.duration,
-//                 instructions: assessment.instructions,
-//                 questions: assessment.questions,
-//                 proctoringSettings: {
-//                     requireWebcam: assessment.requireWebcam,
-//                     requireMicrophone: assessment.requireMicrophone,
-//                     allowTabSwitch: assessment.allowTabSwitch,
-//                     maxTabSwitches: assessment.maxTabSwitches,
-//                     allowFullscreenExit: assessment.allowFullscreenExit,
-//                     maxFullscreenExits: assessment.maxFullscreenExits,
-//                     enableRecording: assessment.enableRecording,
-//                 },
-//             },
-//         });
-//     } catch (error: any) {
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
-
-// export const submitAnswer = async (req: CustomRequest, res: Response) => {
-//     try {
-//         const { userAssessmentId, questionId, answer, timeTaken } = req.body;
-
-//         const userAssessment = await userAssessmentModel.findOne({
-//             userAssessmentId,
-//             userId: req.user?.userId,
-//         });
-
-//         if (!userAssessment) {
-//             return res.status(404).json({ message: 'User assessment not found' });
-//         }
-
-//         if (userAssessment.status !== 'in-progress') {
-//             return res.status(400).json({ message: 'Assessment is not in progress' });
-//         }
-
-//         // Find the question
-//         const question = await questionModel.findOne({ questionId });
-//         if (!question) {
-//             return res.status(404).json({ message: 'Question not found' });
-//         }
-
-//         // Update or add answer
-//         const existingAnswerIndex = userAssessment.answers.findIndex(
-//             (a: any) => a.questionId === questionId
-//         );
-
-//         const answerData: any = {
-//             questionId,
-//             type: question.type,
-//             answer,
-//             timeTaken,
-//             submittedAt: new Date(),
-//         };
-
-//         // For MCQ, check if correct
-//         if (question.type === 'mcq') {
-//             const correctAnswers = question.options
-//                 ?.filter((opt: any) => opt.isCorrect)
-//                 .map((opt: any) => opt.id);
-
-//             if (Array.isArray(answer)) {
-//                 answerData.isCorrect = answer.every((a) => correctAnswers?.includes(a));
-//             } else {
-//                 answerData.isCorrect = correctAnswers?.includes(answer);
-//             }
-
-//             // Calculate marks
-//             if (answerData.isCorrect) {
-//                 answerData.marksObtained = question.marks;
-//             } else if (question.negativeMarks) {
-//                 answerData.marksObtained = -question.negativeMarks;
-//             }
-//         }
-
-//         // For coding questions, we'll evaluate later
-//         if (question.type === 'coding') {
-//             answerData.code = answer;
-//             answerData.language = question.language;
-//         }
-
-//         if (existingAnswerIndex >= 0) {
-//             userAssessment.answers[existingAnswerIndex] = answerData;
-//         } else {
-//             userAssessment.answers.push(answerData);
-//         }
-
-//         await userAssessment.save();
-
-//         // Update session last activity
-//         await sessionModel.findOneAndUpdate(
-//             { userAssessmentId },
-//             { lastActive: new Date() }
-//         );
-
-//         res.json(userAssessment);
-//     } catch (error: any) {
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
-
-// export const completeAssessment = async (req: CustomRequest, res: Response) => {
-//     try {
-//         const { userAssessmentId, recordingUrl, violations } = req.body;
-
-//         const userAssessment = await userAssessmentModel.findOne({
-//             userAssessmentId,
-//             userId: req.user?.userId,
-//         });
-
-//         if (!userAssessment) {
-//             return res.status(404).json({ message: 'User assessment not found' });
-//         }
-
-//         if (userAssessment.status !== 'in-progress') {
-//             return res.status(400).json({ message: 'Assessment is not in progress' });
-//         }
-
-//         // Calculate total score for auto-graded questions
-//         let totalScore = 0;
-//         userAssessment.answers.forEach((answer: any) => {
-//             if (answer.type === 'mcq' && answer.marksObtained !== undefined) {
-//                 totalScore += answer.marksObtained;
-//             }
-//         });
-
-//         userAssessment.status = 'completed';
-//         userAssessment.completedAt = new Date();
-//         userAssessment.score = totalScore;
-//         userAssessment.recordingUrl = recordingUrl;
-//         userAssessment.violations = violations || [];
-//         userAssessment.isPassed = totalScore >= userAssessment.totalMarks * 0.6; // 60% passing
-
-//         await userAssessment.save();
-
-//         // End session
-//         await sessionModel.findOneAndUpdate(
-//             { userAssessmentId },
-//             {
-//                 endTime: new Date(),
-//                 isActive: false,
-//                 recordingComplete: true,
-//             }
-//         );
-
-//         res.json(userAssessment);
-//     } catch (error: any) {
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
-
-// export const getAssessmentQuestions = async (req: Request, res: Response) => {
-//     try {
-//         const assessment = await assessmentModel.findOne({
-//             assessmentId: req.params.id,
-//         });
-
-//         if (!assessment) {
-//             return res.status(404).json({ message: 'Assessment not found' });
-//         }
-
-//         // Get full question details
-//         const questionIds = assessment.questions.map((q: any) => q.questionId);
-//         const questions = await questionModel.find({ questionId: { $in: questionIds } });
-
-//         // Map questions with their order from assessment
-//         const orderedQuestions = assessment.questions.map((aq: any) => {
-//             const question = questions.find((q: any) => q.questionId === aq.questionId);
-//             return {
-//                 ...question?.toObject(),
-//                 index: aq.index,
-//             };
-//         });
-
-//         res.json(orderedQuestions);
-//     } catch (error: any) {
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
-
-// export const evaluateCodingAnswer = async (req: CustomRequest, res: Response) => {
-//     try {
-//         const { userAssessmentId, questionId, code, language } = req.body;
-
-//         const userAssessment = await userAssessmentModel.findOne({ userAssessmentId });
-//         if (!userAssessment) {
-//             return res.status(404).json({ message: 'User assessment not found' });
-//         }
-
-//         const question = await questionModel.findOne({ questionId });
-//         if (!question || question.type !== 'coding') {
-//             return res.status(404).json({ message: 'Coding question not found' });
-//         }
-
-//         // TODO: Implement code execution service
-//         // This would connect to a code execution service
-//         // For now, return mock results
-
-//         const mockResults = {
-//             passedTestCases: question.testCases?.filter((tc: any) => tc.isPublic).length || 0,
-//             totalTestCases: question.testCases?.length || 0,
-//             executionTime: '1.2s',
-//             memoryUsed: '12MB',
-//             score: 0,
-//         };
-
-//         // Update the answer in user assessment
-//         const answerIndex = userAssessment.answers.findIndex(
-//             (a: any) => a.questionId === questionId
-//         );
-
-//         if (answerIndex >= 0) {
-//             userAssessment.answers[answerIndex] = {
-//                 ...userAssessment.answers[answerIndex],
-//                 testResults: mockResults,
-//                 marksObtained: mockResults.score,
-//                 evaluated: true,
-//             };
-//         }
-
-//         await userAssessment.save();
-//         res.json(mockResults);
-//     } catch (error: any) {
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
+    return res.status(HttpStatus.OK).json(
+        successResponse('User assessments fetched successfully', assessments)
+    );
+};

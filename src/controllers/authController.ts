@@ -1,6 +1,6 @@
 import { hashPassword, comparePassword } from '../utils/bcrypt';
 import { Request, Response } from 'express';
-import userModel, { IUser } from '../models/userModel';
+import userModel, { IUser, UserRole } from '../models/userModel';
 import { generateTokens, verifyToken } from '../utils/jwt';
 import { HttpStatus, MESSAGE } from '../utils/constants';
 import { CustomRequest, ChangePasswordRequest } from '../types/authTypes';
@@ -8,7 +8,7 @@ import { errorResponse, successResponse } from '../utils/responseHandler';
 
 export const register = async (req: Request, res: Response) => {
 
-    const { email, password, fullName, phone } = req.body as IUser;
+    const { email, password, fullName, phone, role = UserRole.USER } = req.body as IUser;
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
@@ -22,6 +22,7 @@ export const register = async (req: Request, res: Response) => {
         password: hashedPassword,
         fullName,
         phone,
+        role,
     });
 
     await user.save();
