@@ -55,6 +55,7 @@ export interface IQuestion extends Document {
     id: number;
     type: QuestionType;
     question: string;
+    questionExplanation: string;
     marks: number;
     difficulty: Difficulty;
     tags: string[];
@@ -66,17 +67,16 @@ export interface IQuestion extends Document {
 
     // Type-specific fields (using discriminators or union types)
     options?: IOption[];
-    allowMultiple: boolean;
     negativeMarks: number;
-    explanation: string;
+    answerExplanation: string;
 
     language?: ProgrammingLanguage;
     allowedLanguages?: ProgrammingLanguage[];
     starterCode?: Map<ProgrammingLanguage, string>;
     testCases?: ITestCase[];
-    constraints?: string;
+    constraints?: string[];
     hints?: string[];
-    timeLimitInSeconds: number; // in seconds
+    timeLimitInMinutes: number; // in minutes
     memoryLimitInMB: number; // in MB
 
     databaseType?: DatabaseType;
@@ -170,6 +170,12 @@ const questionSchema = new Schema<IQuestion>(
             trim: true,
             minlength: [10, 'Question must be at least 10 characters long']
         },
+        questionExplanation: {
+            type: String,
+            required: [true, 'Question explanation is required'],
+            trim: true,
+            minlength: [10, 'Question explanation must be at least 10 characters long']
+        },
         marks: {
             type: Number,
             required: [true, 'Marks are required'],
@@ -205,12 +211,12 @@ const questionSchema = new Schema<IQuestion>(
         },
         createdBy: {
             type: Schema.Types.ObjectId,
-            required:true,
+            required: true,
             ref: 'User',
         },
         updatedBy: {
             type: Schema.Types.ObjectId,
-            required:true,
+            required: true,
             ref: 'User',
         },
 
@@ -222,21 +228,17 @@ const questionSchema = new Schema<IQuestion>(
                     if (this.type !== QuestionType.MCQ) return true;
                     if (!options || options.length < 2) return false;
                     const correctCount = options.filter(opt => opt.isCorrect).length;
-                    return this.allowMultiple ? correctCount >= 1 : correctCount === 1;
+                    return correctCount === 1;
                 },
                 message: 'MCQ must have at least 2 options and appropriate correct answers'
             }
-        },
-        allowMultiple: {
-            type: Boolean,
-            default: false
         },
         negativeMarks: {
             type: Number,
             default: 0,
             min: [0, 'Negative marks cannot be negative']
         },
-        explanation: {
+        answerExplanation: {
             type: String,
             trim: true
         },
@@ -272,17 +274,17 @@ const questionSchema = new Schema<IQuestion>(
             }
         },
         constraints: {
-            type: String,
-            trim: true
+            type: [String],
+            default: []
         },
         hints: {
             type: [String],
             default: []
         },
-        timeLimitInSeconds: {
+        timeLimitInMinutes: {
             type: Number,
-            min: [1, 'Time limit must be at least 1 second'],
-            max: [300, 'Time limit cannot exceed 300 seconds']
+            min: [1, 'Time limit must be at least 1 minute'],
+            max: [80, 'Time limit cannot exceed 80 minutes']
         },
         memoryLimitInMB: {
             type: Number,

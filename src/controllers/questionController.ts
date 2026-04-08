@@ -1,11 +1,12 @@
 import { Response } from 'express';
 import { QueryFilter, Types } from 'mongoose';
-import * as csv from 'csv-parser';
+// import * as csv from 'csv-parser';
 import { Readable } from 'node:stream';
 import questionModel, { IQuestion } from '../models/questionModel';
 import { CustomRequest } from '../types/authTypes';
 import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
+import { GetQuestionQuery } from '../types/questionTypes';
 
 /**
  * Get questions with filtering, pagination, and search
@@ -16,13 +17,12 @@ export const getQuestions = async (req: CustomRequest, res: Response) => {
     const {
         type,
         difficulty,
-        categoryId,
         tags,
         isActive,
         page = 1,
         limit = 10,
         search,
-    } = req.query;
+    } = req.query as unknown as GetQuestionQuery;
 
     const pageNumber = Math.max(Number(page), 1);
     const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
@@ -32,7 +32,6 @@ export const getQuestions = async (req: CustomRequest, res: Response) => {
 
     if (type) filter.type = type;
     if (difficulty) filter.difficulty = difficulty;
-    if (categoryId) filter.categoryId = Number(categoryId);
 
     if (tags) {
         const tagList = Array.isArray(tags) ? tags : (tags as string).split(',').map(t => t.trim());
@@ -115,25 +114,21 @@ export const getQuestionById = async (req: CustomRequest, res: Response) => {
  * @access Private (Admin/Super Admin)
  */
 export const createQuestion = async (req: CustomRequest, res: Response) => {
-    if (!req.user?.userId) {
-        return res.status(HttpStatus.UNAUTHORIZED).json(
-            errorResponse('Authentication required', 'User must be authenticated to create a question')
-        );
-    }
+    const { _id: userId } = req.user!;
+    console.log('req.body==>', req.body);
 
     const {
         type,
-        question: questionText,
+        question,
         marks,
         difficulty,
-        categoryId,
         tags,
         isActive,
         // MCQ fields
         options,
-        allowMultiple,
         negativeMarks,
-        explanation,
+        answerExplanation,
+        questionExplanation,
         // Coding fields
         language,
         allowedLanguages,
@@ -141,8 +136,8 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         testCases,
         constraints,
         hints,
-        timeLimit,
-        memoryLimit,
+        timeLimitInMinutes,
+        memoryLimitInMB,
         // Query fields
         databaseType,
         databaseSchema,
@@ -153,22 +148,22 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         maxLength,
         expectedKeywords,
         evaluationRubric,
-    } = req.body;
+    } = req.body as IQuestion;
 
     const newQuestion = new questionModel({
         type,
-        question: questionText,
+        question,
         marks,
         difficulty,
-        categoryId,
         tags,
         isActive: isActive !== false,
-        createdBy: new Types.ObjectId(req.user.userId),
+        createdBy: userId,
+        updatedBy: userId,
         // MCQ fields
         options,
-        allowMultiple,
         negativeMarks,
-        explanation,
+        answerExplanation,
+        questionExplanation,
         // Coding fields
         language,
         allowedLanguages,
@@ -176,8 +171,8 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         testCases,
         constraints,
         hints,
-        timeLimit,
-        memoryLimit,
+        timeLimitInMinutes,
+        memoryLimitInMB,
         // Query fields
         databaseType,
         databaseSchema,
@@ -210,11 +205,8 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
  * @access Private (Admin/Super Admin)
  */
 export const updateQuestion = async (req: CustomRequest, res: Response) => {
-    if (!req.user?.userId) {
-        return res.status(HttpStatus.UNAUTHORIZED).json(
-            errorResponse('Authentication required', 'User must be authenticated to update a question')
-        );
-    }
+    const { _id: userId } = req.user!;
+    console.log(req.body);
 
     const question = await questionModel.findOne({ id: Number(req.params.id) });
 
@@ -244,7 +236,7 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
         }
     }
 
-    question.updatedBy = new Types.ObjectId(req.user.userId);
+    question.updatedBy = new Types.ObjectId(userId);
 
     await question.save();
 
@@ -266,11 +258,7 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
  * @access Private (Admin/Super Admin)
  */
 export const deleteQuestion = async (req: CustomRequest, res: Response) => {
-    if (!req.user?.userId) {
-        return res.status(HttpStatus.UNAUTHORIZED).json(
-            errorResponse('Authentication required', 'User must be authenticated to delete a question')
-        );
-    }
+    const { _id: userId } = req.user!;
 
     const question = await questionModel.findOne({ id: Number(req.params.id) });
 
@@ -287,7 +275,7 @@ export const deleteQuestion = async (req: CustomRequest, res: Response) => {
     }
 
     question.isActive = false;
-    question.updatedBy = new Types.ObjectId(req.user.userId);
+    question.updatedBy = new Types.ObjectId(userId);
     await question.save();
 
     return res.status(HttpStatus.OK).json(
@@ -345,92 +333,92 @@ export const getQuestionsByCategory = async (req: CustomRequest, res: Response) 
  * @route POST /api/questions/import
  * @access Private (Admin/Super Admin)
  */
-export const importQuestions = async (req: CustomRequest, res: Response) => {
-    if (!req.user?.userId) {
-        return res.status(HttpStatus.UNAUTHORIZED).json(
-            errorResponse('Authentication required', 'User must be authenticated to import questions')
-        );
-    }
+// export const importQuestions = async (req: CustomRequest, res: Response) => {
+//     if (!req.user?.userId) {
+//         return res.status(HttpStatus.UNAUTHORIZED).json(
+//             errorResponse('Authentication required', 'User must be authenticated to import questions')
+//         );
+//     }
 
-    if (!req.file) {
-        return res.status(HttpStatus.BAD_REQUEST).json(
-            errorResponse('No file uploaded', 'A CSV file is required for import')
-        );
-    }
+//     if (!req.file) {
+//         return res.status(HttpStatus.BAD_REQUEST).json(
+//             errorResponse('No file uploaded', 'A CSV file is required for import')
+//         );
+//     }
 
-    const rows: Record<string, string>[] = [];
-    const errors: { row: number; error: string }[] = [];
+//     const rows: Record<string, string>[] = [];
+//     const errors: { row: number; error: string }[] = [];
 
-    // Parse CSV file
-    const buffer = req.file.buffer.toString();
-    const stream = Readable.from(buffer);
+//     // Parse CSV file
+//     const buffer = req.file.buffer.toString();
+//     const stream = Readable.from(buffer);
 
-    await new Promise<void>((resolve, reject) => {
-        stream
-            .pipe(csv())
-            .on('data', (data: Record<string, string>) => rows.push(data))
-            .on('end', resolve)
-            .on('error', reject);
-    });
+//     await new Promise<void>((resolve, reject) => {
+//         stream
+//             .pipe(csv())
+//             .on('data', (data: Record<string, string>) => rows.push(data))
+//             .on('end', resolve)
+//             .on('error', reject);
+//     });
 
-    let successCount = 0;
+//     let successCount = 0;
 
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row) continue;
-        try {
-            const questionData: Record<string, unknown> = {
-                type: row.type,
-                question: row.question,
-                marks: Number(row.marks),
-                difficulty: row.difficulty,
-                categoryId: Number(row.categoryId),
-                tags: row.tags ? row.tags.split(',').map(t => t.trim()) : [],
-                createdBy: req.user.userId,
-            };
+//     for (let i = 0; i < rows.length; i++) {
+//         const row = rows[i];
+//         if (!row) continue;
+//         try {
+//             const questionData: Record<string, unknown> = {
+//                 type: row.type,
+//                 question: row.question,
+//                 marks: Number(row.marks),
+//                 difficulty: row.difficulty,
+//                 categoryId: Number(row.categoryId),
+//                 tags: row.tags ? row.tags.split(',').map(t => t.trim()) : [],
+//                 createdBy: req.user.userId,
+//             };
 
-            // Parse type-specific fields
-            if (row.type === 'mcq') {
-                questionData.options = JSON.parse(row.options || '[]');
-                questionData.allowMultiple = row.allowMultiple === 'true';
-                questionData.negativeMarks = Number.parseFloat(row.negativeMarks || '0') || 0;
-                questionData.explanation = row.explanation ?? '';
-            } else if (row.type === 'coding') {
-                questionData.language = row.language;
-                questionData.allowedLanguages = JSON.parse(row.allowedLanguages || '[]');
-                questionData.testCases = JSON.parse(row.testCases || '[]');
-                questionData.constraints = row.constraints ?? '';
-                questionData.hints = JSON.parse(row.hints || '[]');
-            } else if (row.type === 'query') {
-                questionData.databaseType = row.databaseType;
-                questionData.databaseSchema = row.databaseSchema ?? '';
-                questionData.sampleData = row.sampleData ?? '';
-                questionData.expectedQuery = row.expectedQuery ?? '';
-            } else if (row.type === 'subjective') {
-                questionData.minLength = Number(row.minLength) || undefined;
-                questionData.maxLength = Number(row.maxLength) || undefined;
-                questionData.expectedKeywords = JSON.parse(row.expectedKeywords || '[]');
-                questionData.evaluationRubric = JSON.parse(row.evaluationRubric || '[]');
-            }
+//             // Parse type-specific fields
+//             if (row.type === 'mcq') {
+//                 questionData.options = JSON.parse(row.options || '[]');
+//                 questionData.allowMultiple = row.allowMultiple === 'true';
+//                 questionData.negativeMarks = Number.parseFloat(row.negativeMarks || '0') || 0;
+//                 questionData.explanation = row.explanation ?? '';
+//             } else if (row.type === 'coding') {
+//                 questionData.language = row.language;
+//                 questionData.allowedLanguages = JSON.parse(row.allowedLanguages || '[]');
+//                 questionData.testCases = JSON.parse(row.testCases || '[]');
+//                 questionData.constraints = row.constraints ?? '';
+//                 questionData.hints = JSON.parse(row.hints || '[]');
+//             } else if (row.type === 'query') {
+//                 questionData.databaseType = row.databaseType;
+//                 questionData.databaseSchema = row.databaseSchema ?? '';
+//                 questionData.sampleData = row.sampleData ?? '';
+//                 questionData.expectedQuery = row.expectedQuery ?? '';
+//             } else if (row.type === 'subjective') {
+//                 questionData.minLength = Number(row.minLength) || undefined;
+//                 questionData.maxLength = Number(row.maxLength) || undefined;
+//                 questionData.expectedKeywords = JSON.parse(row.expectedKeywords || '[]');
+//                 questionData.evaluationRubric = JSON.parse(row.evaluationRubric || '[]');
+//             }
 
-            const question = new questionModel(questionData);
-            await question.save();
-            successCount++;
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            errors.push({ row: i + 1, error: message });
-        }
-    }
+//             const question = new questionModel(questionData);
+//             await question.save();
+//             successCount++;
+//         } catch (error: unknown) {
+//             const message = error instanceof Error ? error.message : 'Unknown error';
+//             errors.push({ row: i + 1, error: message });
+//         }
+//     }
 
-    return res.status(HttpStatus.OK).json(
-        successResponse('Import completed', {
-            total: rows.length,
-            success: successCount,
-            failed: errors.length,
-            errors,
-        })
-    );
-};
+//     return res.status(HttpStatus.OK).json(
+//         successResponse('Import completed', {
+//             total: rows.length,
+//             success: successCount,
+//             failed: errors.length,
+//             errors,
+//         })
+//     );
+// };
 
 /**
  * Export questions as CSV
@@ -446,16 +434,15 @@ export const exportQuestions = async (_req: CustomRequest, res: Response) => {
         question: q.question,
         marks: q.marks,
         difficulty: q.difficulty,
-        categoryId: q.categoryId,
         tags: q.tags?.join(',') ?? '',
         // MCQ
         options: q.type === 'mcq' ? JSON.stringify(q.options) : '',
-        allowMultiple: q.type === 'mcq' ? q.allowMultiple : '',
         negativeMarks: q.type === 'mcq' ? q.negativeMarks : '',
-        explanation: q.type === 'mcq' ? q.explanation : '',
+        answerExplanation: q.type === 'mcq' ? q.answerExplanation : '',
+        questionExplanation: q.type === 'mcq' ? q.questionExplanation : '',
         // Coding
         language: q.type === 'coding' ? q.language : '',
-        allowedLanguages: q.type === 'coding' ? JSON.stringify(q.allowedLanguages) : '',
+        starterCode: q.type === 'coding' ? q.starterCode : '',
         testCases: q.type === 'coding' ? JSON.stringify(q.testCases) : '',
         constraints: q.type === 'coding' ? q.constraints : '',
         hints: q.type === 'coding' ? JSON.stringify(q.hints) : '',

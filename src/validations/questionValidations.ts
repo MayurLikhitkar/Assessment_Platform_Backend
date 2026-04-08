@@ -57,15 +57,9 @@ export const createQuestionValidation = [
         .isIn(['easy', 'medium', 'hard'])
         .withMessage('Difficulty must be easy, medium, or hard'),
 
-    body('categoryId')
-        .notEmpty().withMessage('Category ID is required')
-        .isMongoId().withMessage('Category ID must be a valid MongoDB ObjectId'),
-
     body('tags')
-        .optional()
         .isArray().withMessage('Tags must be an array'),
     body('tags.*')
-        .optional()
         .isString().withMessage('Each tag must be a string')
         .trim()
         .notEmpty().withMessage('Tags cannot be empty strings'),
@@ -85,9 +79,6 @@ export const createQuestionValidation = [
     body('options.*.isCorrect')
         .optional()
         .isBoolean().withMessage('Option isCorrect must be a boolean'),
-    body('allowMultiple')
-        .optional()
-        .isBoolean().withMessage('allowMultiple must be a boolean'),
     body('negativeMarks')
         .optional()
         .isFloat({ min: 0 }).withMessage('Negative marks must be a non-negative number'),

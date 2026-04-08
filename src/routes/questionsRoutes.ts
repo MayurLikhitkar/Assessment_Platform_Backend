@@ -6,14 +6,12 @@ import {
     createQuestion,
     updateQuestion,
     deleteQuestion,
-    getQuestionsByCategory,
     exportQuestions,
 } from '../controllers/questionController';
 import { asyncHandler } from '../utils/asyncHandler';
 import {
     getQuestionsValidation,
     getQuestionByIdValidation,
-    getQuestionsByCategoryValidation,
     createQuestionValidation,
     updateQuestionValidation,
     deleteQuestionValidation,
@@ -24,7 +22,6 @@ const router = express.Router();
 // ─── Public routes ────────────────────────────────────────────────────
 
 router.get('/', getQuestionsValidation, asyncHandler(getQuestions));
-router.get('/category/:categoryId', getQuestionsByCategoryValidation, asyncHandler(getQuestionsByCategory));
 router.get('/:id', getQuestionByIdValidation, asyncHandler(getQuestionById));
 
 // ─── Protected routes (Admin / Super Admin) ───────────────────────────

@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import authRoutes from './routes/authRoutes';
 import assessmentRoutes from './routes/assessmentsRoutes';
+import questionRoutes from './routes/questionsRoutes';
 import connectDB from './config/connectDB';
 import { ALLOWED_ORIGIN, PORT } from './config/envConfig';
 import errorHandler from './middleware/errorHandler';
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/assessments', assessmentRoutes);
+app.use('/api/questions', questionRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
