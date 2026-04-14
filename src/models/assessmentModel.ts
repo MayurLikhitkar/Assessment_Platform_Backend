@@ -32,7 +32,7 @@ export interface IAssessment extends Document {
     isPublic: boolean;
     startDate?: Date;
     endDate?: Date;
-    tags: string[];
+    tags: string[]; 
     instructions: string;
 
     // Proctoring settings

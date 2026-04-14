@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
+import { Schema, Document, Types, model, Model } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
 export enum ProgrammingLanguage {
@@ -37,7 +37,6 @@ export interface ITestCase extends Document {
     input: string;
     expectedOutput: string;
     isPublic: boolean;
-    points: number;
 }
 
 export interface IOption extends Document {
@@ -90,6 +89,10 @@ export interface IQuestion extends Document {
     evaluationRubric?: IEvaluationRubric[];
 }
 
+interface IQuestionMethods {
+    isCorrectAnswer(userAnswer: IOption[] | string): boolean;
+}
+
 const TestCaseSchema = new Schema<ITestCase>(
     {
         input: {
@@ -105,11 +108,6 @@ const TestCaseSchema = new Schema<ITestCase>(
         isPublic: {
             type: Boolean,
             default: false
-        },
-        points: {
-            type: Number,
-            default: 1,
-            min: [0, 'Points cannot be negative']
         },
     }
 );
@@ -148,7 +146,7 @@ const RubricSchema = new Schema<IEvaluationRubric>(
     }
 );
 
-const questionSchema = new Schema<IQuestion>(
+const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>(
     {
         id: {
             type: Number,
@@ -157,10 +155,7 @@ const questionSchema = new Schema<IQuestion>(
         },
         type: {
             type: String,
-            enum: {
-                values: Object.values(QuestionType),
-                message: '{VALUE} is not a valid question type'
-            },
+            enum: Object.values(QuestionType),
             required: [true, 'Question type is required'],
             index: true
         },
@@ -168,41 +163,28 @@ const questionSchema = new Schema<IQuestion>(
             type: String,
             required: [true, 'Question text is required'],
             trim: true,
-            minlength: [10, 'Question must be at least 10 characters long']
+            minlength: 10,
         },
         questionExplanation: {
             type: String,
             required: [true, 'Question explanation is required'],
             trim: true,
-            minlength: [10, 'Question explanation must be at least 10 characters long']
+            minlength: 10,
         },
         marks: {
             type: Number,
             required: [true, 'Marks are required'],
-            min: [0, 'Marks cannot be negative'],
-            validate: {
-                validator: Number.isInteger,
-                message: 'Marks must be an integer'
-            }
+            min: [0, 'Marks cannot be negative']
         },
         difficulty: {
             type: String,
-            enum: {
-                values: Object.values(Difficulty),
-                message: '{VALUE} is not a valid difficulty level'
-            },
-            required: [true, 'Difficulty level is required'],
+            enum: Object.values(Difficulty),
+            required: true,
             index: true
         },
         tags: {
             type: [String],
             default: [],
-            validate: {
-                validator: function (tags: string[]) {
-                    return tags.every(tag => tag.trim().length > 0);
-                },
-                message: 'Tags cannot be empty strings'
-            }
         },
         isActive: {
             type: Boolean,
@@ -222,16 +204,7 @@ const questionSchema = new Schema<IQuestion>(
 
         // MCQ fields
         options: {
-            type: [OptionSchema],
-            validate: {
-                validator: function (this: IQuestion, options: IOption[]) {
-                    if (this.type !== QuestionType.MCQ) return true;
-                    if (!options || options.length < 2) return false;
-                    const correctCount = options.filter(opt => opt.isCorrect).length;
-                    return correctCount === 1;
-                },
-                message: 'MCQ must have at least 2 options and appropriate correct answers'
-            }
+            type: [OptionSchema]
         },
         negativeMarks: {
             type: Number,
@@ -250,28 +223,14 @@ const questionSchema = new Schema<IQuestion>(
         },
         allowedLanguages: {
             type: [String],
-            enum: Object.values(ProgrammingLanguage),
-            validate: {
-                validator: function (this: IQuestion, langs: ProgrammingLanguage[]) {
-                    if (this.type !== QuestionType.CODING) return true;
-                    return langs && langs.length > 0;
-                },
-                message: 'Coding questions must have at least one allowed language'
-            }
+            enum: Object.values(ProgrammingLanguage)
         },
         starterCode: {
             type: Map,
             of: String
         },
         testCases: {
-            type: [TestCaseSchema],
-            validate: {
-                validator: function (this: IQuestion, testCases: ITestCase[]) {
-                    if (this.type !== QuestionType.CODING) return true;
-                    return testCases && testCases.length > 0;
-                },
-                message: 'Coding questions must have at least one test case'
-            }
+            type: [TestCaseSchema]
         },
         constraints: {
             type: [String],
@@ -284,25 +243,18 @@ const questionSchema = new Schema<IQuestion>(
         timeLimitInMinutes: {
             type: Number,
             min: [1, 'Time limit must be at least 1 minute'],
-            max: [80, 'Time limit cannot exceed 80 minutes']
+            max: [180, 'Time limit cannot exceed 180 minutes']
         },
         memoryLimitInMB: {
             type: Number,
             min: [1, 'Memory limit must be at least 1 MB'],
-            max: [512, 'Memory limit cannot exceed 512 MB']
+            max: [1024, 'Memory limit cannot exceed 1024 MB']
         },
 
         // Query fields
         databaseType: {
             type: String,
-            enum: Object.values(DatabaseType),
-            validate: {
-                validator: function (this: IQuestion, dbType: DatabaseType) {
-                    if (this.type !== QuestionType.QUERY) return true;
-                    return !!dbType;
-                },
-                message: 'Query questions must specify a database type'
-            }
+            enum: Object.values(DatabaseType)
         },
         databaseSchema: {
             type: String,
@@ -325,13 +277,6 @@ const questionSchema = new Schema<IQuestion>(
         minLength: {
             type: Number,
             min: [1, 'Min length must be at least 1 character'],
-            validate: {
-                validator: function (this: IQuestion, minLen: number) {
-                    if (!this.maxLength) return true;
-                    return minLen <= this.maxLength;
-                },
-                message: 'Min length cannot exceed max length'
-            }
         },
         expectedKeywords: {
             type: [String],
@@ -358,55 +303,31 @@ questionSchema.pre('save', async function () {
     if (this.isNew && !this.id) {
         this.id = await generateUniqueId('question');
     }
-    switch (this.type) {
-        case QuestionType.MCQ:
-            if (!this.options || this.options.length < 2) {
-                throw new Error('MCQ questions must have at least 2 options');
-            }
-            break;
-
-        case QuestionType.CODING:
-            if (!this.allowedLanguages || this.allowedLanguages.length === 0) {
-                throw new Error('Coding questions must have at least one allowed language');
-            }
-            if (!this.testCases || this.testCases.length === 0) {
-                throw new Error('Coding questions must have at least one test case');
-            }
-            break;
-
-        case QuestionType.QUERY:
-            if (!this.databaseType) {
-                throw new Error('Query questions must specify a database type');
-            }
-            if (!this.databaseSchema) {
-                throw new Error('Query questions must have a database schema');
-            }
-            break;
-
-        case QuestionType.SUBJECTIVE:
-            if (!this.minLength || !this.maxLength) {
-                throw new Error('Subjective questions must specify min and max length');
-            }
-            break;
-    }
 });
 
 // Instance methods
-questionSchema.methods.isCorrectAnswer = function (
-    userAnswer: number[] | string
-): boolean {
+questionSchema.methods.isCorrectAnswer = function (userAnswer) {
     switch (this.type) {
         case QuestionType.MCQ: {
             if (!this.options) return false;
             const correctIds = this.options
-                .filter((opt: IOption) => opt.isCorrect)
-                .map((opt: IOption) => opt._id);
+                .filter((opt) => opt.isCorrect)
+                .map((opt) => opt._id);
 
             if (Array.isArray(userAnswer)) {
                 return (
                     userAnswer.length === correctIds.length &&
-                    userAnswer.every(id => correctIds.includes(id))
+                    userAnswer.every(opt => correctIds.includes(opt._id))
                 );
+            }
+            return false;
+        }
+
+        case QuestionType.SUBJECTIVE: {
+            if (this.expectedKeywords && typeof userAnswer === 'string') {
+                const answerText = userAnswer.trim().toLowerCase();
+                const keywords = this.expectedKeywords.map(k => k.trim().toLowerCase());
+                return keywords.every(keyword => answerText.includes(keyword));
             }
             return false;
         }
@@ -429,4 +350,4 @@ questionSchema.statics.findByTags = function (tags: string[]) {
     return this.find({ tags: { $in: tags }, isActive: true }).sort({ createdAt: -1 });
 };
 
-export default mongoose.model<IQuestion>('Question', questionSchema);
+export default model<IQuestion>('Question', questionSchema);
