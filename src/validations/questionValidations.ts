@@ -42,7 +42,7 @@ export const createQuestionValidation = [
         .isLength({ max: 2000 }).withMessage('Question must not exceed 2000 characters'),
 
     body('questionExplanation')
-        .notEmpty().withMessage('Question explanation is required')
+        .optional({ checkFalsy: true })
         .isString().withMessage('Question explanation must be a string')
         .trim()
         .isLength({ min: 10 }).withMessage('Question explanation must be at least 10 characters long')
@@ -196,9 +196,9 @@ export const createQuestionValidation = [
         .isArray().withMessage('Expected keywords must be an array'),
     body('expectedKeywords.*')
         .if(body('type').equals(QuestionType.SUBJECTIVE))
-        .isString().withMessage('Each tag must be a string')
+        .isString().withMessage('Each keyword must be a string')
         .trim()
-        .notEmpty().withMessage('Tags cannot be empty strings'),
+        .notEmpty().withMessage('Keywords cannot be empty strings'),
     body('evaluationRubric')
         .if(body('type').equals(QuestionType.SUBJECTIVE))
         .isArray().withMessage('Evaluation rubric must be an array'),
