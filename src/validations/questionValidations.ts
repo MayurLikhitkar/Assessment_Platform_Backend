@@ -38,7 +38,7 @@ export const createQuestionValidation = [
         .notEmpty().withMessage('Question text is required')
         .isString().withMessage('Question must be a string')
         .trim()
-        .isLength({ min: 10 }).withMessage('Question must be at least 10 characters long')
+        .isLength({ min: 5 }).withMessage('Question must be at least 5 characters long')
         .isLength({ max: 2000 }).withMessage('Question must not exceed 2000 characters'),
 
     body('questionExplanation')
@@ -71,7 +71,6 @@ export const createQuestionValidation = [
         .notEmpty().withMessage('Tags are required')
         .isArray({ min: 1 }).withMessage('At least one tag is required'),
     body('tags.*')
-        .optional()
         .isString().withMessage('Each tag must be a string')
         .trim()
         .notEmpty().withMessage('Tags cannot be empty strings'),
@@ -134,11 +133,15 @@ export const createQuestionValidation = [
         .optional()
         .isBoolean().withMessage('isPublic must be a boolean')
         .toBoolean(),
+    // body('constraints')
     body('constraints')
-        .optional()
-        .isString().withMessage('Constraints must be a string')
-        .isLength({ max: 500 }).withMessage('Constraints must not exceed 500 characters')
-        .trim(),
+        .if(body('type').equals(QuestionType.CODING))
+        .isArray({ min: 1 }).withMessage('At least one constraint is required'),
+    body('constraints.*')
+        .if(body('type').equals(QuestionType.CODING))
+        .isString().withMessage('Each constraint must be a string')
+        .trim()
+        .notEmpty().withMessage('Constraints cannot be empty strings'),
     body('hints')
         .optional()
         .isArray().withMessage('Hints must be an array'),
@@ -153,7 +156,7 @@ export const createQuestionValidation = [
         .toInt(),
     body('memoryLimitInMB')
         .optional()
-        .isInt({ min: 1, max: 1024 }).withMessage('Memory limit must be 1-1024 MB')
+        .isInt({ min: 1, max: 128 }).withMessage('Memory limit must be 1-128 MB')
         .toInt(),
 
     // Query-specific fields
@@ -163,7 +166,6 @@ export const createQuestionValidation = [
         .withMessage('Database type must be one of: ' + Object.values(DatabaseType).join(', ')),
     body('databaseSchema')
         .if(body('type').equals(QuestionType.QUERY))
-        .notEmpty().withMessage('Database schema is required for query questions')
         .isString().withMessage('Database schema must be a string')
         .isLength({ min: 10 }).withMessage('Schema must be at least 10 characters long')
         .trim(),
@@ -172,7 +174,7 @@ export const createQuestionValidation = [
         .isString().withMessage('Sample data must be a string')
         .trim(),
     body('expectedQuery')
-        .optional()
+        .if(body('type').equals(QuestionType.QUERY))
         .isString().withMessage('Expected query must be a string')
         .isLength({ min: 5, max: 500 }).withMessage('Expected query must be at least 5 characters long and not exceed 500 characters')
         .trim(),
@@ -180,14 +182,12 @@ export const createQuestionValidation = [
     // Subjective-specific fields
     body('minLength')
         .if(body('type').equals(QuestionType.SUBJECTIVE))
-        .notEmpty().withMessage('Min length is required for subjective questions')
         .isInt({ min: 10 }).withMessage('Min length must be at least 10')
         .toInt(),
     body('maxLength')
         .if(body('type').equals(QuestionType.SUBJECTIVE))
-        .notEmpty().withMessage('Max length is required for subjective questions')
         .custom((val, { req }) => {
-            if (parseInt(val) < parseInt(req.body.minLength)) throw new Error('Max length must be >= min length');
+            if (Number(val) < Number(req.body.minLength)) throw new Error('Max length must be >= min length');
             return true;
         })
         .toInt(),
@@ -199,9 +199,9 @@ export const createQuestionValidation = [
         .isString().withMessage('Each keyword must be a string')
         .trim()
         .notEmpty().withMessage('Keywords cannot be empty strings'),
-    body('evaluationRubric')
-        .if(body('type').equals(QuestionType.SUBJECTIVE))
-        .isArray().withMessage('Evaluation rubric must be an array'),
+    // body('evaluationRubric')
+    //     .if(body('type').equals(QuestionType.SUBJECTIVE))
+    //     .isArray().withMessage('Evaluation rubric must be an array'),
 
     validate
 ];

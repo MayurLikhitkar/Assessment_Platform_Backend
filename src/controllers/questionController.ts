@@ -190,7 +190,7 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
     const populatedQuestion = await questionModel
         .findById(newQuestion._id)
         .select('-__v')
-        .populate('categoryId', 'name description')
+        // .populate('categoryId', 'name description')
         .lean()
         .exec();
 

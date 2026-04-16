@@ -97,12 +97,12 @@ const TestCaseSchema = new Schema<ITestCase>(
     {
         input: {
             type: String,
-            required: [true, 'Test case input is required'],
+            required: true,
             trim: true
         },
         expectedOutput: {
             type: String,
-            required: [true, 'Expected output is required'],
+            required: true,
             trim: true
         },
         isPublic: {
@@ -116,9 +116,9 @@ const OptionSchema = new Schema<IOption>(
     {
         text: {
             type: String,
-            required: [true, 'Option text is required'],
+            required: true,
             trim: true,
-            minlength: [1, 'Option text cannot be empty']
+            minlength: 1
         },
         isCorrect: {
             type: Boolean,
@@ -151,30 +151,28 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
         id: {
             type: Number,
             unique: true,
-            index: true
+            index: true,
         },
         type: {
             type: String,
             enum: Object.values(QuestionType),
-            required: [true, 'Question type is required'],
+            required: true,
             index: true
         },
         question: {
             type: String,
-            required: [true, 'Question text is required'],
+            required: true,
             trim: true,
-            minlength: 10,
+            minlength: 5,
         },
         questionExplanation: {
             type: String,
-            required: [true, 'Question explanation is required'],
             trim: true,
-            minlength: 10,
         },
         marks: {
             type: Number,
-            required: [true, 'Marks are required'],
-            min: [0, 'Marks cannot be negative']
+            required: true,
+            min: 0
         },
         difficulty: {
             type: String,
@@ -209,7 +207,7 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
         negativeMarks: {
             type: Number,
             default: 0,
-            min: [0, 'Negative marks cannot be negative']
+            min: 0
         },
         answerExplanation: {
             type: String,
@@ -242,13 +240,13 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
         },
         timeLimitInMinutes: {
             type: Number,
-            min: [1, 'Time limit must be at least 1 minute'],
-            max: [180, 'Time limit cannot exceed 180 minutes']
+            min: 1,
+            max: 180
         },
         memoryLimitInMB: {
             type: Number,
-            min: [1, 'Memory limit must be at least 1 MB'],
-            max: [1024, 'Memory limit cannot exceed 1024 MB']
+            min: 1,
+            max: 128
         },
 
         // Query fields
@@ -272,11 +270,11 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
         // Subjective fields
         maxLength: {
             type: Number,
-            min: [1, 'Max length must be at least 1 character']
+            min: 1
         },
         minLength: {
             type: Number,
-            min: [1, 'Min length must be at least 1 character'],
+            min: 1,
         },
         expectedKeywords: {
             type: [String],
