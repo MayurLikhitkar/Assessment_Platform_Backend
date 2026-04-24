@@ -296,6 +296,7 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
 questionSchema.index({ type: 1, difficulty: 1, categoryId: 1 });
 questionSchema.index({ tags: 1 });
 questionSchema.index({ isActive: 1, createdAt: -1 });
+questionSchema.index({ question: 'text', tags: 'text' }, { name: 'question_text_search' });
 
 questionSchema.pre('save', async function () {
     if (this.isNew && !this.id) {

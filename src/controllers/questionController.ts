@@ -1,7 +1,6 @@
 import { Response } from 'express';
-import { QueryFilter, Types } from 'mongoose';
+import { QueryFilter, Types, isValidObjectId } from 'mongoose';
 // import * as csv from 'csv-parser';
-import { Readable } from 'node:stream';
 import questionModel, { IQuestion } from '../models/questionModel';
 import { CustomRequest } from '../types/authTypes';
 import { HttpStatus } from '../utils/constants';
@@ -22,10 +21,12 @@ export const getQuestions = async (req: CustomRequest, res: Response) => {
         page = 1,
         limit = 10,
         search,
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
     } = req.query as unknown as GetQuestionQuery;
 
-    const pageNumber = Math.max(Number(page), 1);
-    const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
 
     const filter: QueryFilter<IQuestion> = {};
@@ -34,7 +35,7 @@ export const getQuestions = async (req: CustomRequest, res: Response) => {
     if (difficulty) filter.difficulty = difficulty;
 
     if (tags) {
-        const tagList = Array.isArray(tags) ? tags : (tags as string).split(',').map(t => t.trim());
+        const tagList = Array.isArray(tags) ? tags : (tags).split(',').map(t => t.trim());
         filter.tags = { $in: tagList };
     }
 
@@ -43,24 +44,21 @@ export const getQuestions = async (req: CustomRequest, res: Response) => {
     }
 
     if (search) {
-        const searchRegex = new RegExp(
-            (search as string).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-            'i'
-        );
-        filter.$or = [
-            { question: searchRegex },
-            { tags: searchRegex },
-        ];
+        filter.$text = { $search: search };
     }
+
+    const sortOptions: Record<string, 1 | -1> = {
+        [sortBy as string]: sortOrder === 'asc' ? 1 : -1
+    };
 
     const [questions, total] = await Promise.all([
         questionModel
             .find(filter)
             .select('-__v')
-            .sort({ createdAt: -1 })
+            .sort(sortOptions)
             .skip(skip)
             .limit(limitNumber)
-            .populate('categoryId', 'name description')
+            // .populate('categoryId', 'name description')
             .lean()
             .exec(),
         questionModel.countDocuments(filter).exec()
@@ -80,6 +78,13 @@ export const getQuestions = async (req: CustomRequest, res: Response) => {
                 hasNextPage,
                 hasPrevPage,
             },
+            filters: {
+                search,
+                difficulty,
+                type,
+                isActive,
+                tags,
+            }
         })
     );
 };
@@ -93,7 +98,7 @@ export const getQuestionById = async (req: CustomRequest, res: Response) => {
     const question = await questionModel
         .findOne({ id: Number(req.params.id) })
         .select('-__v')
-        .populate('categoryId', 'name description')
+        // .populate('categoryId', 'name description')
         .lean()
         .exec();
 
@@ -208,11 +213,16 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
     console.log(req.body);
 
-    const question = await questionModel.findOne({ id: Number(req.params.id) });
+    const { id } = req.params;
+    const filter: QueryFilter<IQuestion> = isValidObjectId(id)
+        ? { _id: new Types.ObjectId(id as string) }
+        : { id: Number(id) };
+
+    const question = await questionModel.findOne(filter);
 
     if (!question) {
         return res.status(HttpStatus.NOT_FOUND).json(
-            errorResponse('Question not found', `No question found with ID: ${req.params.id}`)
+            errorResponse('Question not found', `No question found with ID: ${id}`)
         );
     }
 
@@ -220,10 +230,10 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
     const allowedFields = [
         'type', 'question', 'marks', 'difficulty', 'categoryId', 'tags', 'isActive',
         // MCQ
-        'options', 'allowMultiple', 'negativeMarks', 'explanation',
+        'options', 'allowMultiple', 'negativeMarks', 'answerExplanation', 'questionExplanation',
         // Coding
         'language', 'allowedLanguages', 'starterCode', 'testCases',
-        'constraints', 'hints', 'timeLimit', 'memoryLimit',
+        'constraints', 'hints', 'timeLimitInMinutes', 'memoryLimitInMB',
         // Query
         'databaseType', 'databaseSchema', 'sampleData', 'expectedQuery',
         // Subjective
@@ -243,7 +253,7 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
     const populatedQuestion = await questionModel
         .findById(question._id)
         .select('-__v')
-        .populate('categoryId', 'name description')
+        // .populate('categoryId', 'name description')
         .lean()
         .exec();
 
