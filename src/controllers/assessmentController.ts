@@ -155,7 +155,13 @@ export const createAssessment = async (req: CustomRequest, res: Response) => {
 
     try {
 
-        const { title, description, type, difficulty, durationInMinutes, startDate, endDate, tags, instructions, requireWebcam, requireMicrophone, allowTabSwitch, maxTabSwitches, allowFullscreenExit, maxFullscreenExits, enableRecording, } = req.body as IAssessment;
+        const {
+            title, description, type, difficulty, durationInMinutes,
+            totalMarks, passingMarks, questions, isActive, isPublic,
+            startDate, endDate, tags, instructions,
+            requireWebcam, requireMicrophone, allowTabSwitch, maxTabSwitches,
+            allowFullscreenExit, maxFullscreenExits, enableRecording,
+        } = req.body as IAssessment;
 
         const { _id: userId } = req.user!;
 
@@ -166,6 +172,11 @@ export const createAssessment = async (req: CustomRequest, res: Response) => {
             type,
             difficulty,
             durationInMinutes,
+            totalMarks,
+            passingMarks,
+            questions,
+            isActive: isActive ?? true,
+            isPublic: isPublic ?? false,
             tags,
             instructions,
             startDate,

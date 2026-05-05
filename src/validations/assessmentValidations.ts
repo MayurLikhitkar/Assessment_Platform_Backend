@@ -62,6 +62,11 @@ export const createAssessmentValidation = [
         .isInt({ min: 10, max: 240 }).withMessage('Duration must be between 10 and 240 minutes')
         .toInt(),
 
+    body('totalMarks').optional().isInt({ min: 1 }).withMessage('Total marks must be >= 1').toInt(),
+    body('passingMarks').optional().isInt({ min: 1 }).withMessage('Passing marks must be >= 1').toInt(),
+    body('questions').optional().isArray().withMessage('Questions must be an array'),
+    body('questions.*').optional().isMongoId().withMessage('Each question must be a valid MongoDB ObjectId'),
+
     body('startDate')
         .optional()
         .isISO8601().withMessage('Start date must be a valid ISO 8601 date')
@@ -163,6 +168,8 @@ export const updateAssessmentValidation = [
 
     body('totalMarks').optional().isInt({ min: 0 }).withMessage('Total marks must be >= 0').toInt(),
     body('passingMarks').optional().isInt({ min: 0 }).withMessage('Passing marks must be >= 0').toInt(),
+    body('questions').optional().isArray().withMessage('Questions must be an array'),
+    body('questions.*').optional().isMongoId().withMessage('Each question must be a valid MongoDB ObjectId'),
     body('isActive').optional().isBoolean().withMessage('isActive must be a boolean').toBoolean(),
     body('isPublic').optional().isBoolean().withMessage('isPublic must be a boolean').toBoolean(),
 

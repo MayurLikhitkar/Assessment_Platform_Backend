@@ -94,7 +94,8 @@ const assessmentSchema = new Schema<IAssessment>(
         questions: {
             type: [Schema.Types.ObjectId],
             required: true,
-            ref: 'Question'
+            ref: 'Question',
+            default: []
         },
         createdBy: {
             type: Schema.Types.ObjectId,
@@ -123,13 +124,13 @@ const assessmentSchema = new Schema<IAssessment>(
         },
 
         // Proctoring settings
-        requireWebcam: { type: Boolean, default: true },
-        requireMicrophone: { type: Boolean, default: true },
+        requireWebcam: { type: Boolean, default: false },
+        requireMicrophone: { type: Boolean, default: false },
         allowTabSwitch: { type: Boolean, default: false },
         maxTabSwitches: { type: Number, default: 2, min: 0 },
         allowFullscreenExit: { type: Boolean, default: false },
         maxFullscreenExits: { type: Number, default: 2, min: 0 },
-        enableRecording: { type: Boolean, default: true },
+        enableRecording: { type: Boolean, default: false },
     },
     { timestamps: true }
 );
