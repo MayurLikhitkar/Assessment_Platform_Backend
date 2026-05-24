@@ -16,6 +16,7 @@ import {
     updateQuestionValidation,
     deleteQuestionValidation,
 } from '../validations/questionValidations';
+import { UserRole } from '../models/userModel';
 
 const router = express.Router();
 
@@ -30,14 +31,14 @@ router.get('/:id', getQuestionByIdValidation, asyncHandler(getQuestionById));
 router.get(
     '/export',
     authenticate,
-    authorize('admin', 'super_admin'),
+    authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
     asyncHandler(exportQuestions)
 );
 
 router.post(
     '/',
     authenticate,
-    authorize('admin', 'super_admin'),
+    authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
     createQuestionValidation,
     asyncHandler(createQuestion)
 );
@@ -45,7 +46,7 @@ router.post(
 router.put(
     '/:id',
     authenticate,
-    authorize('admin', 'super_admin'),
+    authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
     updateQuestionValidation,
     asyncHandler(updateQuestion)
 );
@@ -53,7 +54,7 @@ router.put(
 router.delete(
     '/:id',
     authenticate,
-    authorize('admin', 'super_admin'),
+    authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
     deleteQuestionValidation,
     asyncHandler(deleteQuestion)
 );
@@ -66,7 +67,7 @@ router.delete(
 // router.post(
 //     '/import',
 //     authenticate,
-//     authorize('admin', 'super_admin'),
+//     authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
 //     upload.single('file'),
 //     asyncHandler(importQuestions)
 // );

@@ -105,6 +105,8 @@ export const createAssessmentValidation = [
         .isString().withMessage('Instructions must be a string')
         .isLength({ max: 5000 }).withMessage('Instructions cannot exceed 5000 characters'),
 
+    body('isActive').optional().isBoolean().withMessage('isActive must be a boolean').toBoolean(),
+    body('isPublic').optional().isBoolean().withMessage('isPublic must be a boolean').toBoolean(),
     // Proctoring settings
     body('requireWebcam').optional().isBoolean().withMessage('requireWebcam must be a boolean').toBoolean(),
     body('requireMicrophone').optional().isBoolean().withMessage('requireMicrophone must be a boolean').toBoolean(),

@@ -1,10 +1,11 @@
 import { Request } from "express";
+import { UserRole } from "../models/userModel";
 
 export interface TokenPayload {
     _id: string;
     userId: number;
     email: string;
-    role: string;
+    role: UserRole;
 }
 
 export interface CustomRequest extends Request {

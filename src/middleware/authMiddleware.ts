@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import userModel from '../models/userModel';
+import userModel, { UserRole } from '../models/userModel';
 import { verifyToken } from '../utils/jwt';
 import { HttpStatus } from '../utils/constants';
 import { CustomRequest } from '../types/authTypes';
@@ -49,7 +49,7 @@ export const authenticate = async (
     }
 };
 
-export const authorize = (...roles: string[]) => {
+export const authorize = (...roles: UserRole[]) => {
     return (req: CustomRequest, res: Response, next: NextFunction) => {
         if (!req.user) {
             logger.warn('Unauthorized: missing user payload');
