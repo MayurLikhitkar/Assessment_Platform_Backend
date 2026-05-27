@@ -1,6 +1,6 @@
 import { body, oneOf, param, query } from 'express-validator';
 import validate from './validate';
-import { AssessmentDifficulty, AssessmentType } from '../models/assessmentModel';
+import { AssessmentDifficulty, AssessmentType } from '../types/assessmentTypes';
 
 export const getAssessmentsValidation = [
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer').toInt(),

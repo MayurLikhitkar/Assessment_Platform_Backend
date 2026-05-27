@@ -141,7 +141,7 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         testCases,
         constraints,
         hints,
-        timeLimitInMinutes,
+        timeLimitInSeconds,
         memoryLimitInMB,
         // Query fields
         databaseType,
@@ -176,7 +176,7 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         testCases,
         constraints,
         hints,
-        timeLimitInMinutes,
+        timeLimitInSeconds,
         memoryLimitInMB,
         // Query fields
         databaseType,
@@ -233,7 +233,7 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
         'options', 'allowMultiple', 'negativeMarks', 'answerExplanation', 'questionExplanation',
         // Coding
         'language', 'allowedLanguages', 'starterCode', 'testCases',
-        'constraints', 'hints', 'timeLimitInMinutes', 'memoryLimitInMB',
+        'constraints', 'hints', 'timeLimitInSeconds', 'memoryLimitInMB',
         // Query
         'databaseType', 'databaseSchema', 'sampleData', 'expectedQuery',
         // Subjective

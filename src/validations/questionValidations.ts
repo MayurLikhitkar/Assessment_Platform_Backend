@@ -1,6 +1,7 @@
 import { body, query, param } from 'express-validator';
 import validate from './validate';
-import { DatabaseType, Difficulty, IOption, ProgrammingLanguage, QuestionType } from '../models/questionModel';
+import { IOption } from '../models/questionModel';
+import { DatabaseType, Difficulty, ProgrammingLanguage, QuestionType } from '../types/questionTypes';
 
 // ─── GET /questions query-string validation ───────────────────────────
 export const getQuestionsValidation = [
@@ -42,11 +43,18 @@ export const createQuestionValidation = [
         .isLength({ max: 2000 }).withMessage('Question must not exceed 2000 characters'),
 
     body('questionExplanation')
-        .optional({ checkFalsy: true })
+        .optional({ values: 'falsy' })
         .isString().withMessage('Question explanation must be a string')
         .trim()
         .isLength({ min: 10 }).withMessage('Question explanation must be at least 10 characters long')
         .isLength({ max: 3000 }).withMessage('Question explanation must not exceed 3000 characters'),
+
+    body('answerExplanation')
+        .optional({ values: 'falsy' })
+        .isString().withMessage('Answer explanation must be a string')
+        .isLength({ min: 10 }).withMessage('Answer explanation must be at least 10 characters long')
+        .isLength({ max: 2000 }).withMessage('Answer explanation must not exceed 2000 characters')
+        .trim(),
 
     body('marks')
         .notEmpty().withMessage('Marks are required')
@@ -103,11 +111,6 @@ export const createQuestionValidation = [
         .optional()
         .isBoolean().withMessage('Option isCorrect must be a boolean')
         .toBoolean(),
-    body('answerExplanation')
-        .optional()
-        .isString().withMessage('Answer explanation must be a string')
-        .isLength({ max: 2000 }).withMessage('Answer explanation must not exceed 2000 characters')
-        .trim(),
 
     // Coding-specific fields
     body('allowedLanguages')
@@ -150,13 +153,13 @@ export const createQuestionValidation = [
         .isString().withMessage('Each hint must be a string')
         .trim()
         .notEmpty().withMessage('Hints cannot be empty strings'),
-    body('timeLimitInMinutes')
-        .optional()
-        .isInt({ min: 1, max: 180 }).withMessage('Time limit must be 1-180 minutes')
+    body('timeLimitInSeconds')
+        .notEmpty().withMessage('Time limit is required')
+        .isInt({ min: 5, max: 18000 }).withMessage('Time limit must be 5-18000 seconds')
         .toInt(),
     body('memoryLimitInMB')
         .optional()
-        .isInt({ min: 1, max: 128 }).withMessage('Memory limit must be 1-128 MB')
+        .isInt({ min: 128, max: 512 }).withMessage('Memory limit must be 128-512 MB')
         .toInt(),
 
     // Query-specific fields
@@ -223,10 +226,18 @@ export const updateQuestionValidation = [
         .isLength({ min: 10 }).withMessage('Question must be at least 10 characters long'),
 
     body('questionExplanation')
-        .optional()
+        .optional({ values: 'falsy' })
         .isString().withMessage('Question explanation must be a string')
         .trim()
-        .isLength({ min: 10 }).withMessage('Question explanation must be at least 10 characters long'),
+        .isLength({ min: 10 }).withMessage('Question explanation must be at least 10 characters long')
+        .isLength({ max: 3000 }).withMessage('Question explanation must not exceed 3000 characters'),
+
+    body('answerExplanation')
+        .optional({ values: 'falsy' })
+        .isString().withMessage('Answer explanation must be a string')
+        .trim()
+        .isLength({ min: 10 }).withMessage('Answer explanation must be at least 10 characters long')
+        .isLength({ max: 2000 }).withMessage('Answer explanation must not exceed 2000 characters'),
 
     body('marks')
         .optional()
@@ -286,9 +297,6 @@ export const updateQuestionValidation = [
             if (req.body.marks !== undefined && val > req.body.marks) throw new Error('Negative marks cannot exceed total marks');
             return true;
         }),
-    body('answerExplanation')
-        .optional()
-        .isString().withMessage('Answer explanation must be a string'),
 
     // Coding fields
     body('allowedLanguages')
@@ -297,13 +305,13 @@ export const updateQuestionValidation = [
     body('testCases')
         .optional()
         .isArray({ min: 1 }).withMessage('Test cases must be a non-empty array'),
-    body('timeLimitInMinutes')
-        .optional()
-        .isInt({ min: 1, max: 180 }).withMessage('Time limit must be 1-180 minutes')
+    body('timeLimitInSeconds')
+        .notEmpty().withMessage('Time limit is required')
+        .isInt({ min: 5, max: 18000 }).withMessage('Time limit must be 5-18000 seconds')
         .toInt(),
     body('memoryLimitInMB')
         .optional()
-        .isInt({ min: 1, max: 1024 }).withMessage('Memory limit must be 1-1024 MB')
+        .isInt({ min: 128, max: 512 }).withMessage('Memory limit must be 128-512 MB')
         .toInt(),
 
     // Query fields

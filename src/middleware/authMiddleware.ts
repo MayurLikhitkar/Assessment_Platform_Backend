@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import userModel, { UserRole } from '../models/userModel';
+import userModel, { UserRole, UserStatus } from '../models/userModel';
 import { verifyToken } from '../utils/jwt';
 import { HttpStatus } from '../utils/constants';
 import { CustomRequest } from '../types/authTypes';
@@ -32,6 +32,10 @@ export const authenticate = async (
         const user = await userModel.findById(decoded._id);
         if (!user) {
             throw new Error('User not found');
+        }
+
+        if (user.status !== UserStatus.ACTIVE) {
+            throw new Error('Inactive Account');
         }
 
         request.user = {

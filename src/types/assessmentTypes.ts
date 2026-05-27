@@ -1,4 +1,19 @@
-import { AssessmentDifficulty, AssessmentType, IAssessment } from "../models/assessmentModel";
+import { IAssessment } from "../models/assessmentModel";
+
+export enum AssessmentType {
+    APTITUDE = 'aptitude',
+    CODING = 'coding',
+    QUERY = 'query',
+    SUBJECTIVE = 'subjective',
+    MCQ = 'mcq',
+}
+
+export enum AssessmentDifficulty {
+    BEGINNER = 'beginner',
+    INTERMEDIATE = 'intermediate',
+    ADVANCED = 'advanced',
+    EXPERT = 'expert',
+}
 
 export type AssessmentSortableFields = Pick<IAssessment, 'createdAt' | 'title' | 'difficulty' | 'durationInMinutes' | 'startDate' | 'endDate'>;
 

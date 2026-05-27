@@ -1,37 +1,6 @@
 import { Schema, Document, Types, model, Model } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
-
-export enum ProgrammingLanguage {
-    JAVASCRIPT = 'javascript',
-    TYPESCRIPT = 'typescript',
-    PYTHON = 'python',
-    JAVA = 'java',
-    CPP = 'c++',
-    CSHARP = 'c#',
-    R = 'r',
-    SQL = 'sql',
-    HTML = 'html',
-    CSS = 'css'
-}
-export enum QuestionType {
-    MCQ = 'mcq',
-    CODING = 'coding',
-    QUERY = 'query',
-    SUBJECTIVE = 'subjective',
-}
-
-export enum Difficulty {
-    EASY = 'easy',
-    MEDIUM = 'medium',
-    HARD = 'hard',
-}
-
-export enum DatabaseType {
-    MYSQL = 'mysql',
-    POSTGRESQL = 'postgresql',
-    MONGODB = 'mongodb',
-    SQLITE = 'sqlite',
-}
+import { DatabaseType, Difficulty, ProgrammingLanguage, QuestionType } from '../types/questionTypes';
 
 export interface ITestCase extends Document {
     input: string;
@@ -75,7 +44,7 @@ export interface IQuestion extends Document {
     testCases?: ITestCase[];
     constraints?: string[];
     hints?: string[];
-    timeLimitInMinutes: number; // in minutes
+    timeLimitInSeconds: number; // in seconds
     memoryLimitInMB: number; // in MB
 
     databaseType?: DatabaseType;
@@ -238,15 +207,15 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
             type: [String],
             default: []
         },
-        timeLimitInMinutes: {
+        timeLimitInSeconds: {
             type: Number,
-            min: 1,
-            max: 180
+            min: 5,
+            max: 18000
         },
         memoryLimitInMB: {
             type: Number,
-            min: 1,
-            max: 128
+            min: 128,
+            max: 512
         },
 
         // Query fields

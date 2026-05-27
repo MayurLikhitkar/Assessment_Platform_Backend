@@ -1,20 +1,6 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
-
-export enum AssessmentType {
-    APTITUDE = 'aptitude',
-    CODING = 'coding',
-    QUERY = 'query',
-    SUBJECTIVE = 'subjective',
-    MCQ = 'mcq',
-}
-
-export enum AssessmentDifficulty {
-    BEGINNER = 'beginner',
-    INTERMEDIATE = 'intermediate',
-    ADVANCED = 'advanced',
-    EXPERT = 'expert',
-}
+import { AssessmentDifficulty, AssessmentType } from '../types/assessmentTypes';
 
 export interface IAssessment extends Document {
     id: number;
@@ -32,16 +18,16 @@ export interface IAssessment extends Document {
     isPublic: boolean;
     startDate?: Date;
     endDate?: Date;
-    tags: string[]; 
+    tags: string[];
     instructions: string;
 
     // Proctoring settings
     requireWebcam: boolean;
     requireMicrophone: boolean;
     allowTabSwitch: boolean;
-    maxTabSwitches: number;
+    maxTabSwitches?: number;
     allowFullscreenExit: boolean;
-    maxFullscreenExits: number;
+    maxFullscreenExits?: number;
     enableRecording: boolean;
 
     createdAt: Date;
@@ -127,9 +113,9 @@ const assessmentSchema = new Schema<IAssessment>(
         requireWebcam: { type: Boolean, default: false },
         requireMicrophone: { type: Boolean, default: false },
         allowTabSwitch: { type: Boolean, default: false },
-        maxTabSwitches: { type: Number, default: 2, min: 0 },
+        maxTabSwitches: { type: Number, min: 0 },
         allowFullscreenExit: { type: Boolean, default: false },
-        maxFullscreenExits: { type: Number, default: 2, min: 0 },
+        maxFullscreenExits: { type: Number, min: 0 },
         enableRecording: { type: Boolean, default: false },
     },
     { timestamps: true }
