@@ -1,15 +1,16 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
+import { UserAssessmentStatus, VoilationType } from '../types/userAssessmentTypes';
 
 export interface IUserAssessment extends Document {
     id: number;
     userId: Types.ObjectId;
     assessmentId: Types.ObjectId;
-    status: 'assigned' | 'in-progress' | 'completed' | 'expired' | 'terminated';
+    status: UserAssessmentStatus;
     startedAt?: Date;
     completedAt?: Date;
-    timeSpent: number;
-    score?: number;
+    timeSpentInSeconds: number;
+    score: number;
     totalMarks: number;
     answers: any[];
 
@@ -18,7 +19,7 @@ export interface IUserAssessment extends Document {
     tabSwitches: number;
     fullscreenExits: number;
     violations: {
-        type: 'tab_switch' | 'fullscreen_exit' | 'no_webcam' | 'multiple_faces' | 'no_audio';
+        type: VoilationType;
         timestamp: Date;
         details?: string;
     }[];
@@ -60,7 +61,7 @@ const ViolationSchema = new Schema({
 
 const userAssessmentSchema = new Schema<IUserAssessment>(
     {
-        id: { type: Number, unique: true },
+        id: { type: Number, unique: true, index: true },
         userId: {
             type: Schema.Types.ObjectId,
             required: true,
@@ -73,18 +74,19 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
         },
         status: {
             type: String,
-            enum: ['assigned', 'in-progress', 'completed', 'expired', 'terminated'],
-            default: 'assigned',
+            enum: Object.values(UserAssessmentStatus),
+            default: UserAssessmentStatus.ASSIGNED,
         },
         startedAt: Date,
         completedAt: Date,
-        timeSpent: {
+        timeSpentInSeconds: {
             type: Number,
             default: 0 // in seconds
         },
         score: {
             type: Number,
-            min: 0
+            min: 0,
+            default: 0,
         },
         totalMarks: {
             type: Number,

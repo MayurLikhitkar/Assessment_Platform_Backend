@@ -59,7 +59,7 @@ const assessmentSchema = new Schema<IAssessment>(
         difficulty: {
             type: String,
             enum: Object.values(AssessmentDifficulty),
-            default: AssessmentDifficulty.INTERMEDIATE,
+            default: AssessmentDifficulty.BEGINNER,
         },
         durationInMinutes: {
             type: Number,
