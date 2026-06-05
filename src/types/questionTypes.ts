@@ -1,13 +1,10 @@
-import { IQuestion } from "../models/questionModel";
-
-
 export enum ProgrammingLanguage {
     JAVASCRIPT = 'javascript',
     TYPESCRIPT = 'typescript',
     PYTHON = 'python',
     JAVA = 'java',
-    CPP = 'c++',
-    CSHARP = 'c#',
+    CPP = 'cpp',
+    CSHARP = 'csharp',
     R = 'r',
     SQL = 'sql',
     HTML = 'html',
@@ -34,7 +31,20 @@ export enum DatabaseType {
     SQLITE = 'sqlite',
 }
 
-export type QuestionSortableFields = Pick<IQuestion, 'createdAt' | 'difficulty' | 'marks' | 'timeLimitInSeconds' | 'memoryLimitInMB'>;
+export interface ITestCase {
+    input: string;
+    expectedOutput: string;
+    isPublic: boolean;
+}
+
+export interface IOption {
+    text: string;
+    isCorrect: boolean;
+}
+
+import { IQuestion } from "../models/questionModel";
+
+export type QuestionSortableFields = Pick<IQuestion, 'createdAt' | 'difficulty' | 'marks' | 'timeLimitInSeconds'>;
 
 export interface GetQuestionQuery {
     search?: string;

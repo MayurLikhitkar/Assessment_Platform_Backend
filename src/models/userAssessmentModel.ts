@@ -1,6 +1,21 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 import { UserAssessmentStatus, VoilationType } from '../types/userAssessmentTypes';
+import { QuestionType } from '../types/questionTypes';
+
+export interface IUserAssessmentAnswer extends Document {
+    questionId: Types.ObjectId,
+    type: QuestionType,
+    submittedAt: Date,
+    timeSpentInSeconds: number,
+    answerMCQ?: string,
+    answerCoding?: string,
+    answerQuery?: string,
+    answerSubjective?: string,
+    marksObtained: number,
+    createdAt: Date,
+    updatedAt: Date,
+}
 
 export interface IUserAssessment extends Document {
     id: number;
@@ -34,19 +49,17 @@ export interface IUserAssessment extends Document {
     updatedAt: Date;
 }
 
-const AnswerSchema = new Schema({
-    questionId: { type: Number, required: true },
+const AnswerSchema = new Schema<IUserAssessmentAnswer>({
+    questionId: { type: Types.ObjectId, required: true },
     type: {
         type: String,
         enum: ['mcq', 'coding', 'query', 'subjective'],
         required: true,
     },
-    answer: Schema.Types.Mixed,
+    // answer: Schema.Types.Mixed,
     marksObtained: { type: Number, default: 0 },
-    timeTaken: { type: Number, default: 0 }, // in seconds
+    timeSpentInSeconds: { type: Number, default: 0 }, // in seconds
     submittedAt: { type: Date, default: Date.now },
-    evaluated: { type: Boolean, default: false },
-    evaluatorNotes: String,
 });
 
 const ViolationSchema = new Schema({
@@ -92,13 +105,13 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
             type: Number,
             required: true
         },
-        answers: [AnswerSchema],
+        // answers: { type: [AnswerSchema], default: [] },
 
         // Proctoring data
         recordingUrl: String,
         tabSwitches: { type: Number, default: 0 },
         fullscreenExits: { type: Number, default: 0 },
-        violations: [ViolationSchema],
+        violations: { type: [ViolationSchema], default: [] },
 
         evaluatedBy: {
             type: Schema.Types.ObjectId,

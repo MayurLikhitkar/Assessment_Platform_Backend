@@ -135,8 +135,7 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         answerExplanation,
         questionExplanation,
         // Coding fields
-        language,
-        allowedLanguages,
+        programmingLanguages,
         starterCode,
         testCases,
         constraints,
@@ -152,7 +151,6 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         minLength,
         maxLength,
         expectedKeywords,
-        evaluationRubric,
     } = req.body as IQuestion;
 
     const newQuestion = new questionModel({
@@ -170,8 +168,7 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         answerExplanation,
         questionExplanation,
         // Coding fields
-        language,
-        allowedLanguages,
+        programmingLanguages,
         starterCode,
         testCases,
         constraints,
@@ -187,7 +184,6 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         minLength,
         maxLength,
         expectedKeywords,
-        evaluationRubric,
     });
 
     await newQuestion.save();
@@ -451,7 +447,6 @@ export const exportQuestions = async (_req: CustomRequest, res: Response) => {
         answerExplanation: q.type === 'mcq' ? q.answerExplanation : '',
         questionExplanation: q.type === 'mcq' ? q.questionExplanation : '',
         // Coding
-        language: q.type === 'coding' ? q.language : '',
         starterCode: q.type === 'coding' ? q.starterCode : '',
         testCases: q.type === 'coding' ? JSON.stringify(q.testCases) : '',
         constraints: q.type === 'coding' ? q.constraints : '',
@@ -465,7 +460,6 @@ export const exportQuestions = async (_req: CustomRequest, res: Response) => {
         minLength: q.type === 'subjective' ? q.minLength : '',
         maxLength: q.type === 'subjective' ? q.maxLength : '',
         expectedKeywords: q.type === 'subjective' ? JSON.stringify(q.expectedKeywords) : '',
-        evaluationRubric: q.type === 'subjective' ? JSON.stringify(q.evaluationRubric) : '',
     }));
 
     const headers = Object.keys(csvData[0] || {});

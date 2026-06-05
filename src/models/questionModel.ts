@@ -1,31 +1,17 @@
 import { Schema, Document, Types, model, Model } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
-import { DatabaseType, Difficulty, ProgrammingLanguage, QuestionType } from '../types/questionTypes';
-
-export interface ITestCase extends Document {
-    input: string;
-    expectedOutput: string;
-    isPublic: boolean;
-}
-
-export interface IOption extends Document {
-    text: string;
-    isCorrect: boolean;
-}
-
-export interface IEvaluationRubric extends Document {
-    criteria: string;
-    maxScore: number;
-    description?: string;
-}
+import { DatabaseType, Difficulty, IOption, ITestCase, ProgrammingLanguage, QuestionType } from '../types/questionTypes';
 
 export interface IQuestion extends Document {
     id: number;
     type: QuestionType;
     question: string;
     questionExplanation: string;
+    answerExplanation: string;
+    negativeMarks: number;
     marks: number;
     difficulty: Difficulty;
+    timeLimitInSeconds?: number; // in seconds
     tags: string[];
     isActive: boolean;
     createdBy: Types.ObjectId;
@@ -33,29 +19,33 @@ export interface IQuestion extends Document {
     createdAt: Date;
     updatedAt: Date;
 
-    // Type-specific fields (using discriminators or union types)
+    // mcq fields
     options?: IOption[];
-    negativeMarks: number;
-    answerExplanation: string;
+    isMultiSelect?: boolean;
 
-    language?: ProgrammingLanguage;
-    allowedLanguages?: ProgrammingLanguage[];
-    starterCode?: Map<ProgrammingLanguage, string>;
+    // coding fields
+    programmingLanguages?: ProgrammingLanguage[];
+    starterCode?: Partial<Record<ProgrammingLanguage, string>>;
+    solutionCode?: Partial<Record<ProgrammingLanguage, string>>;
     testCases?: ITestCase[];
     constraints?: string[];
     hints?: string[];
-    timeLimitInSeconds: number; // in seconds
-    memoryLimitInMB: number; // in MB
+    memoryLimitInMB?: number;
 
+    // query fields
     databaseType?: DatabaseType;
     databaseSchema?: string;
     sampleData?: string;
-    expectedQuery?: string;
+    expectedQuery: string;
+    allowedKeywords?: string[];
+    forbiddenKeywords?: string[];
 
-    maxLength?: number;
+    // subjective fields
     minLength?: number;
+    maxLength?: number;
+    wordLimit?: number;
     expectedKeywords?: string[];
-    evaluationRubric?: IEvaluationRubric[];
+    sampleAnswer?: string;
 }
 
 interface IQuestionMethods {
@@ -96,25 +86,6 @@ const OptionSchema = new Schema<IOption>(
     }
 );
 
-const RubricSchema = new Schema<IEvaluationRubric>(
-    {
-        criteria: {
-            type: String,
-            required: [true, 'Rubric criteria is required'],
-            trim: true
-        },
-        maxScore: {
-            type: Number,
-            required: [true, 'Max score is required'],
-            min: [0, 'Max score cannot be negative']
-        },
-        description: {
-            type: String,
-            trim: true
-        },
-    }
-);
-
 const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>(
     {
         id: {
@@ -138,6 +109,15 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
             type: String,
             trim: true,
         },
+        negativeMarks: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+        answerExplanation: {
+            type: String,
+            trim: true
+        },
         marks: {
             type: Number,
             required: true,
@@ -148,6 +128,11 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
             enum: Object.values(Difficulty),
             required: true,
             index: true
+        },
+        timeLimitInSeconds: {
+            type: Number,
+            min: 5,
+            max: 7200
         },
         tags: {
             type: [String],
@@ -173,44 +158,26 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
         options: {
             type: [OptionSchema]
         },
-        negativeMarks: {
-            type: Number,
-            default: 0,
-            min: 0
-        },
-        answerExplanation: {
-            type: String,
-            trim: true
+        isMultiSelect: {
+            type: Boolean,
+            default: false
         },
 
         // Coding fields
-        language: {
-            type: String,
-            enum: Object.values(ProgrammingLanguage)
-        },
-        allowedLanguages: {
+        programmingLanguages: {
             type: [String],
             enum: Object.values(ProgrammingLanguage)
         },
-        starterCode: {
-            type: Map,
-            of: String
-        },
+        starterCode: { type: Schema.Types.Mixed },
+        solutionCode: { type: Schema.Types.Mixed },
         testCases: {
             type: [TestCaseSchema]
         },
         constraints: {
             type: [String],
-            default: []
         },
         hints: {
             type: [String],
-            default: []
-        },
-        timeLimitInSeconds: {
-            type: Number,
-            min: 5,
-            max: 18000
         },
         memoryLimitInMB: {
             type: Number,
@@ -235,6 +202,12 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
             type: String,
             trim: true
         },
+        allowedKeywords: {
+            type: [String],
+        },
+        forbiddenKeywords: {
+            type: [String],
+        },
 
         // Subjective fields
         maxLength: {
@@ -245,13 +218,17 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
             type: Number,
             min: 1,
         },
+        wordLimit: {
+            type: Number,
+            min: 1,
+        },
         expectedKeywords: {
             type: [String],
             default: []
         },
-        evaluationRubric: {
-            type: [RubricSchema],
-            default: []
+        sampleAnswer: {
+            type: String,
+            trim: true
         },
     },
     {
@@ -262,7 +239,7 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
 );
 
 // Indexes for better query performance
-questionSchema.index({ type: 1, difficulty: 1, categoryId: 1 });
+questionSchema.index({ type: 1, difficulty: 1 });
 questionSchema.index({ tags: 1 });
 questionSchema.index({ isActive: 1, createdAt: -1 });
 questionSchema.index({ question: 'text', tags: 'text' }, { name: 'question_text_search' });
@@ -280,12 +257,12 @@ questionSchema.methods.isCorrectAnswer = function (userAnswer) {
             if (!this.options) return false;
             const correctIds = this.options
                 .filter((opt) => opt.isCorrect)
-                .map((opt) => opt._id);
+                .map((opt) => opt.text);
 
             if (Array.isArray(userAnswer)) {
                 return (
                     userAnswer.length === correctIds.length &&
-                    userAnswer.every(opt => correctIds.includes(opt._id))
+                    userAnswer.every(opt => correctIds.includes(opt.text))
                 );
             }
             return false;

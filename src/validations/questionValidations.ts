@@ -1,7 +1,6 @@
 import { body, query, param } from 'express-validator';
 import validate from './validate';
-import { IOption } from '../models/questionModel';
-import { DatabaseType, Difficulty, ProgrammingLanguage, QuestionType } from '../types/questionTypes';
+import { DatabaseType, Difficulty, IOption, ProgrammingLanguage, QuestionType } from '../types/questionTypes';
 
 // ─── GET /questions query-string validation ───────────────────────────
 export const getQuestionsValidation = [

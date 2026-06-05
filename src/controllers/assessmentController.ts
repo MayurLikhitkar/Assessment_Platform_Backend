@@ -6,22 +6,8 @@ import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 import { CustomRequest } from '../types/authTypes';
 import logger from '../utils/logger';
-
-/** Build a createdAt date-range filter, or undefined if no dates provided */
-const dateRangeFilter = (startDate?: Date, endDate?: Date) => {
-    if (!startDate && !endDate) return undefined;
-
-    const dateFilter: Record<string, Date> = {};
-    if (startDate) {
-        dateFilter.$gte = new Date(startDate);
-    }
-    if (endDate) {
-        const endDateTime = new Date(endDate);
-        endDateTime.setHours(23, 59, 59, 999);
-        dateFilter.$lte = endDateTime;
-    }
-    return dateFilter;
-};
+import userAssessmentModel from '../models/userAssessmentModel';
+import { UserAssessmentStatus } from '../types/userAssessmentTypes';
 
 /**
  * Get assessments with filtering, pagination, and search
@@ -57,10 +43,19 @@ export const getAssessments = async (req: CustomRequest, res: Response) => {
         filter.isPublic = isPublic;
     }
 
-    const dateRange = dateRangeFilter(startDate, endDate);
-    if (dateRange) {
-        filter.createdAt = dateRange;
+    if (startDate) {
+        filter.startDate = { $gte: new Date(startDate) };
     }
+    if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.endDate = { $lte: endDateTime };
+    }
+
+    // const dateRange = dateRangeFilter(startDate, endDate);
+    // if (dateRange) {
+    //     filter.createdAt = dateRange;
+    // }
 
     const sortOptions: Record<string, 1 | -1> = {
         [sortBy]: sortOrder === 'asc' ? 1 : -1
@@ -346,3 +341,145 @@ export const getUserAssessments = async (req: CustomRequest, res: Response) => {
         successResponse('User assessments fetched successfully', assessments)
     );
 };
+
+export const startAssessment = async (req: CustomRequest, res: Response) => {
+    const { _id: userId } = req.user!;
+
+    const assessment = await assessmentModel.findOne({
+        assessmentId: req.params.id,
+        isActive: true,
+    });
+
+    if (!assessment) {
+        return res.status(HttpStatus.NOT_FOUND).json(
+            errorResponse('Assessment not found', 'No assessment found with the given ID')
+        );
+    }
+
+    // Check if user already has an assessment in progress
+    const existingUserAssessment = await userAssessmentModel.findOne({
+        userId: userId,
+        assessmentId: assessment._id,
+        status: { $in: [UserAssessmentStatus.COMPLETED, UserAssessmentStatus.EXPIRED, UserAssessmentStatus.TERMINATED] },
+    });
+
+    if (existingUserAssessment) {
+        return res.status(HttpStatus.BAD_REQUEST).json((
+            errorResponse('Assessment already done', 'Assessment is completed, expired or terminated')
+        ));
+    }
+
+    // Create user assessment
+    const userAssessment = new userAssessmentModel({
+        userId: userId,
+        assessmentId: assessment._id,
+        status: UserAssessmentStatus.IN_PROGRESS,
+        startedAt: new Date(),
+        totalMarks: assessment.totalMarks,
+        answers: [],
+    });
+
+    await userAssessment.save();
+
+    // Create session
+    // const session = new Session({
+    //     userId: userId,
+    //     assessmentId: assessment._id,
+    //     userAssessmentId: userAssessment._id,
+    //     startTime: new Date(),
+    //     lastActive: new Date(),
+    //     ipAddress: req.ip,
+    //     userAgent: req.headers['user-agent'],
+    //     deviceInfo: {
+    //         os: 'Unknown',
+    //         browser: 'Unknown',
+    //         screenResolution: 'Unknown',
+    //     },
+    // });
+
+    // await session.save();
+
+    return res.status(HttpStatus.CREATED).json(successResponse('Assessment started successfully', userAssessment));
+};
+
+// export const submitAnswer = async (req: CustomRequest, res: Response) => {
+//     try {
+//         const { userAssessmentId, questionId, answer, timeTaken } = req.body;
+
+//         const userAssessment = await UserAssessment.findOne({
+//             userAssessmentId,
+//             userId: req.user?.userId,
+//         });
+
+//         if (!userAssessment) {
+//             return res.status(404).json({ message: 'User assessment not found' });
+//         }
+
+//         if (userAssessment.status !== 'in-progress') {
+//             return res.status(400).json({ message: 'Assessment is not in progress' });
+//         }
+
+//         // Find the question
+//         const question = await Question.findOne({ questionId });
+//         if (!question) {
+//             return res.status(404).json({ message: 'Question not found' });
+//         }
+
+//         // Update or add answer
+//         const existingAnswerIndex = userAssessment.answers.findIndex(
+//             (a: any) => a.questionId === questionId
+//         );
+
+//         const answerData: any = {
+//             questionId,
+//             type: question.type,
+//             answer,
+//             timeTaken,
+//             submittedAt: new Date(),
+//         };
+
+//         // For MCQ, check if correct
+//         if (question.type === 'mcq') {
+//             const correctAnswers = question.options
+//                 ?.filter((opt: any) => opt.isCorrect)
+//                 .map((opt: any) => opt.id);
+
+//             if (Array.isArray(answer)) {
+//                 answerData.isCorrect = answer.every((a) => correctAnswers?.includes(a));
+//             } else {
+//                 answerData.isCorrect = correctAnswers?.includes(answer);
+//             }
+
+//             // Calculate marks
+//             if (answerData.isCorrect) {
+//                 answerData.marksObtained = question.marks;
+//             } else if (question.negativeMarks) {
+//                 answerData.marksObtained = -question.negativeMarks;
+//             }
+//         }
+
+//         // For coding questions, we'll evaluate later
+//         if (question.type === 'coding') {
+//             answerData.code = answer;
+//             answerData.language = question.language;
+//         }
+
+//         if (existingAnswerIndex >= 0) {
+//             userAssessment.answers[existingAnswerIndex] = answerData;
+//         } else {
+//             userAssessment.answers.push(answerData);
+//         }
+
+//         await userAssessment.save();
+
+//         // Update session last activity
+//         await Session.findOneAndUpdate(
+//             { userAssessmentId },
+//             { lastActive: new Date() }
+//         );
+
+//         res.json(userAssessment);
+//     } catch (error: any) {
+//         res.status(500).json({ message: 'Server error', error: error.message });
+//     }
+// };
