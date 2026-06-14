@@ -2,7 +2,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt';
 import { Request, Response } from 'express';
 import userModel, { IUser, UserRole } from '../models/userModel';
 import { generateTokens, verifyToken } from '../utils/jwt';
-import { HttpStatus, MESSAGE } from '../utils/constants';
+import { HttpStatus, Message } from '../utils/constants';
 import { CustomRequest, ChangePasswordRequest } from '../types/authTypes';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 
@@ -12,7 +12,7 @@ export const register = async (req: Request, res: Response) => {
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
-        return res.status(HttpStatus.CONFLICT).json(errorResponse(MESSAGE.ACCOUNT_ALREADY_EXISTS, 'User already exists'));
+        return res.status(HttpStatus.CONFLICT).json(errorResponse(Message.ACCOUNT_ALREADY_EXISTS, 'User already exists'));
     }
 
     const hashedPassword = await hashPassword(password);
@@ -27,7 +27,7 @@ export const register = async (req: Request, res: Response) => {
 
     await user.save();
 
-    return res.status(HttpStatus.CREATED).json(successResponse(MESSAGE.REGISTERED_SUCCESSFULLY, user));
+    return res.status(HttpStatus.CREATED).json(successResponse(Message.REGISTERED_SUCCESSFULLY, user));
 };
 
 export const login = async (req: Request, res: Response) => {
@@ -36,12 +36,12 @@ export const login = async (req: Request, res: Response) => {
 
     const user = await userModel.findOne({ email }).select('+password');
     if (!user) {
-        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse(MESSAGE.INVALID_CREDENTIALS, 'Account with this email not found'))
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse(Message.INVALID_CREDENTIALS, 'Account with this email not found'))
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
-        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse(MESSAGE.INVALID_CREDENTIALS, 'Invalid password'))
+        return res.status(HttpStatus.BAD_REQUEST).json(errorResponse(Message.INVALID_CREDENTIALS, 'Invalid password'))
     }
 
     // Update last login
@@ -56,17 +56,17 @@ export const login = async (req: Request, res: Response) => {
     });
 
     if (!tokens) {
-        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(errorResponse(MESSAGE.SOMETHING_WENT_WRONG, 'Failed to generate tokens'));
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(errorResponse(Message.SOMETHING_WENT_WRONG, 'Failed to generate tokens'));
     }
 
     const { password: _, ...userWithoutPassword } = user.toObject();
 
-    return res.status(HttpStatus.OK).json(successResponse(MESSAGE.AUTHENTICATION_SUCCESS, { ...tokens, user: userWithoutPassword }));
+    return res.status(HttpStatus.OK).json(successResponse(Message.AUTHENTICATION_SUCCESS, { ...tokens, user: userWithoutPassword }));
 };
 
 export const logout = async (req: CustomRequest, res: Response) => {
     // In a real application, you might want to blacklist the token
-    return res.status(HttpStatus.OK).json(successResponse(MESSAGE.LOGGED_OUT_SUCCESSFULLY));
+    return res.status(HttpStatus.OK).json(successResponse(Message.LOGGED_OUT_SUCCESSFULLY));
 };
 
 export const refreshToken = async (req: Request, res: Response) => {
@@ -94,7 +94,7 @@ export const refreshToken = async (req: Request, res: Response) => {
         role: user.role,
     });
 
-    return res.status(HttpStatus.OK).json(successResponse(MESSAGE.AUTHENTICATION_SUCCESS, tokens));
+    return res.status(HttpStatus.OK).json(successResponse(Message.AUTHENTICATION_SUCCESS, tokens));
 };
 
 export const getProfile = async (req: CustomRequest, res: Response) => {
@@ -203,10 +203,10 @@ export const resetPassword = async (req: Request, res: Response) => {
     user.resetPasswordExpires = null;
     await user.save();
 
-    res.status(HttpStatus.OK).json(successResponse('Password reset successfully'));
+    return res.status(HttpStatus.OK).json(successResponse('Password reset successfully'));
 };
 
 export const getUsers = async (req: Request, res: Response) => {
     const users = await userModel.find().select('-password');
-    res.status(HttpStatus.OK).json(successResponse('Users fetched successfully', users));
+    return res.status(HttpStatus.OK).json(successResponse('Users fetched successfully', users));
 };
