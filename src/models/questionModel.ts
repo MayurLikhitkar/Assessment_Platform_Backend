@@ -1,4 +1,4 @@
-import { Schema, Document, Types, model, Model } from 'mongoose';
+import { Schema, Document, model, Model, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 import { DatabaseType, Difficulty, IOption, ITestCase, ProgrammingLanguage, QuestionType } from '../types/questionTypes';
 
@@ -68,7 +68,7 @@ const TestCaseSchema = new Schema<ITestCase>(
             type: Boolean,
             default: false
         },
-    }
+    }, { _id: false }
 );
 
 const OptionSchema = new Schema<IOption>(
@@ -283,7 +283,7 @@ questionSchema.methods.isCorrectAnswer = function (userAnswer) {
 };
 
 // Static methods
-questionSchema.statics.findByCategory = function (categoryId: Types.ObjectId) {
+questionSchema.statics.findByCategory = function (categoryId: Schema.Types.ObjectId) {
     return this.find({ categoryId, isActive: true }).sort({ createdAt: -1 });
 };
 

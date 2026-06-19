@@ -8,6 +8,7 @@ import { CustomRequest } from '../types/authTypes';
 import logger from '../utils/logger';
 import userAssessmentModel from '../models/userAssessmentModel';
 import { UserAssessmentStatus } from '../types/userAssessmentTypes';
+import questionModel, { IQuestion } from '../models/questionModel';
 
 /**
  * Get assessments with filtering, pagination, and search
@@ -100,6 +101,31 @@ export const getAssessments = async (req: CustomRequest, res: Response) => {
     )
     );
 };
+
+export const getAssessmentQuestions = async (req: CustomRequest, res: Response) => {
+    const { id } = req.params;
+    const filter: QueryFilter<IAssessment> = isValidObjectId(id)
+        ? { _id: new Types.ObjectId(id as string) }
+        : { id: Number(id) };
+    const assessment = await assessmentModel.findOne(filter).select('questions').lean().exec();
+
+    if (!assessment) {
+        return res.status(HttpStatus.NOT_FOUND).json(
+            errorResponse('Assessment not found', 'No assessment found with the given ID')
+        );
+    }
+
+    const questions: IQuestion[] = await questionModel
+        .find({ _id: { $in: assessment.questions } })
+        .lean()
+        .exec();
+
+    console.log('first=>', questions)
+
+    return res.status(HttpStatus.OK).json(
+        successResponse('Assessment questions fetched successfully', questions)
+    );
+}
 
 /**
  * Get assessment by ID with populated questions

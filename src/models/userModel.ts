@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
 
 export enum UserRole {
@@ -35,8 +35,8 @@ export interface IUser extends Document {
     isPhoneVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
-    createdBy?: string;
-    updatedBy?: string;
+    createdBy?: Types.ObjectId;
+    updatedBy?: Types.ObjectId;
     lastLogin?: Date;
     resetPasswordToken: string | null;
     resetPasswordExpires: Date | null;

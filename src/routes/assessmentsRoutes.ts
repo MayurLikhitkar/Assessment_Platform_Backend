@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/authMiddleware';
-import { createAssessment, deleteAssessment, getAssessmentById, getAssessments, getUserAssessments, startAssessment, updateAssessment } from '../controllers/assessmentController';
+import { createAssessment, deleteAssessment, getAssessmentById, getAssessmentQuestions, getAssessments, getUserAssessments, startAssessment, updateAssessment } from '../controllers/assessmentController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { createAssessmentValidation, getAssessmentByIdValidation, getAssessmentsValidation, updateAssessmentValidation } from '../validations/assessmentValidations';
 import { UserRole } from '../models/userModel';
@@ -34,6 +34,8 @@ router.post(
 router.post('/:id/start', authenticate, startAssessment);
 // router.post('/:id/answer', authenticate, submitAnswer);
 // router.post('/:id/complete', authenticate, completeAssessment);
+
+router.get('/:id/questions', getAssessmentByIdValidation, asyncHandler(getAssessmentQuestions));
 
 router.put(
     '/:id',

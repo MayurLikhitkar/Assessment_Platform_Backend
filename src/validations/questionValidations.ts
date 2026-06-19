@@ -112,7 +112,7 @@ export const createQuestionValidation = [
         .toBoolean(),
 
     // Coding-specific fields
-    body('allowedLanguages')
+    body('programmingLanguages')
         .if(body('type').equals(QuestionType.CODING))
         .isArray({ min: 1 }).withMessage('At least one programming language must be selected')
         .custom((types: ProgrammingLanguage[]) => {
@@ -298,7 +298,7 @@ export const updateQuestionValidation = [
         }),
 
     // Coding fields
-    body('allowedLanguages')
+    body('programmingLanguages')
         .optional()
         .isArray({ min: 1 }).withMessage('Allowed languages must be a non-empty array'),
     body('testCases')

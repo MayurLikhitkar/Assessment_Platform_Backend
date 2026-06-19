@@ -3,18 +3,15 @@ import { generateUniqueId } from '../utils/generateId';
 import { UserAssessmentStatus, VoilationType } from '../types/userAssessmentTypes';
 import { QuestionType } from '../types/questionTypes';
 
-export interface IUserAssessmentAnswer extends Document {
+export interface IUserAssessmentAnswer {
     questionId: Types.ObjectId,
-    type: QuestionType,
-    submittedAt: Date,
+    questionType: QuestionType,
     timeSpentInSeconds: number,
-    answerMCQ?: string,
+    answerMCQ?: Types.ObjectId[],
     answerCoding?: string,
     answerQuery?: string,
     answerSubjective?: string,
     marksObtained: number,
-    createdAt: Date,
-    updatedAt: Date,
 }
 
 export interface IUserAssessment extends Document {
@@ -27,7 +24,7 @@ export interface IUserAssessment extends Document {
     timeSpentInSeconds: number;
     score: number;
     totalMarks: number;
-    answers: any[];
+    answers: IUserAssessmentAnswer[];
 
     // Proctoring data
     recordingUrl?: string;
@@ -50,16 +47,29 @@ export interface IUserAssessment extends Document {
 }
 
 const AnswerSchema = new Schema<IUserAssessmentAnswer>({
-    questionId: { type: Types.ObjectId, required: true },
-    type: {
+    questionId: { type: Schema.Types.ObjectId, required: true },
+    questionType: {
         type: String,
-        enum: ['mcq', 'coding', 'query', 'subjective'],
+        enum: Object.values(QuestionType),
         required: true,
     },
-    // answer: Schema.Types.Mixed,
-    marksObtained: { type: Number, default: 0 },
-    timeSpentInSeconds: { type: Number, default: 0 }, // in seconds
-    submittedAt: { type: Date, default: Date.now },
+    timeSpentInSeconds: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    answerMCQ: {
+        type: [Schema.Types.ObjectId],
+        default: []
+    },
+    answerCoding: String,
+    answerQuery: String,
+    answerSubjective: String,
+    marksObtained: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
 });
 
 const ViolationSchema = new Schema({
@@ -105,7 +115,7 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
             type: Number,
             required: true
         },
-        // answers: { type: [AnswerSchema], default: [] },
+        answers: { type: [AnswerSchema], default: [] },
 
         // Proctoring data
         recordingUrl: String,
@@ -120,6 +130,14 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
         evaluationDate: Date,
         feedback: String,
         isPassed: Boolean,
+        createdBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        updatedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
     },
     { timestamps: true }
 );
