@@ -96,7 +96,7 @@ export const getQuestions = async (req: CustomRequest, res: Response) => {
  */
 export const getQuestionById = async (req: CustomRequest, res: Response) => {
     const question = await questionModel
-        .findOne({ id: Number(req.params.id) })
+        .findOne({ id: req.params.id })
         .select('-__v')
         // .populate('categoryId', 'name description')
         .lean()
@@ -129,28 +129,16 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         difficulty,
         tags,
         isActive,
-        // MCQ fields
-        options,
         negativeMarks,
         answerExplanation,
         questionExplanation,
-        // Coding fields
-        programmingLanguages,
-        starterCode,
-        testCases,
-        constraints,
         hints,
         timeLimitInSeconds,
-        memoryLimitInMB,
-        // Query fields
-        databaseType,
-        databaseSchema,
-        sampleData,
-        expectedQuery,
-        // Subjective fields
-        minLength,
-        maxLength,
-        expectedKeywords,
+
+        mcqFields,
+        codingFields,
+        queryFields,
+        subjectiveFields,
     } = req.body as IQuestion;
 
     const newQuestion = new questionModel({
@@ -162,28 +150,15 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
         isActive: isActive !== false,
         createdBy: userId,
         updatedBy: userId,
-        // MCQ fields
-        options,
         negativeMarks,
         answerExplanation,
         questionExplanation,
-        // Coding fields
-        programmingLanguages,
-        starterCode,
-        testCases,
-        constraints,
         hints,
         timeLimitInSeconds,
-        memoryLimitInMB,
-        // Query fields
-        databaseType,
-        databaseSchema,
-        sampleData,
-        expectedQuery,
-        // Subjective fields
-        minLength,
-        maxLength,
-        expectedKeywords,
+        mcqFields,
+        codingFields,
+        queryFields,
+        subjectiveFields,
     });
 
     await newQuestion.save();
@@ -207,7 +182,6 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
  */
 export const updateQuestion = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
-    console.log(req.body);
 
     const { id } = req.params;
     const filter: QueryFilter<IQuestion> = isValidObjectId(id)
@@ -266,7 +240,7 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
 export const deleteQuestion = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
 
-    const question = await questionModel.findOne({ id: Number(req.params.id) });
+    const question = await questionModel.findOne({ id: req.params.id });
 
     if (!question) {
         return res.status(HttpStatus.NOT_FOUND).json(
@@ -285,52 +259,7 @@ export const deleteQuestion = async (req: CustomRequest, res: Response) => {
     await question.save();
 
     return res.status(HttpStatus.OK).json(
-        successResponse('Question deactivated successfully', { id: question.id })
-    );
-};
-
-/**
- * Get questions by category with pagination
- * @route GET /api/questions/category/:categoryId
- * @access Private
- */
-export const getQuestionsByCategory = async (req: CustomRequest, res: Response) => {
-    const { page = 1, limit = 10 } = req.query;
-
-    const pageNumber = Math.max(Number(page), 1);
-    const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
-    const skip = (pageNumber - 1) * limitNumber;
-
-    const filter: QueryFilter<IQuestion> = {
-        categoryId: req.params.categoryId,
-        isActive: true,
-    };
-
-    const [questions, total] = await Promise.all([
-        questionModel
-            .find(filter)
-            .select('-__v')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limitNumber)
-            .lean()
-            .exec(),
-        questionModel.countDocuments(filter).exec()
-    ]);
-
-    const totalPages = Math.ceil(total / limitNumber);
-
-    return res.status(HttpStatus.OK).json(
-        successResponse('Questions fetched successfully', questions, {
-            pagination: {
-                total,
-                page: pageNumber,
-                limit: limitNumber,
-                totalPages,
-                hasNextPage: pageNumber < totalPages,
-                hasPrevPage: pageNumber > 1,
-            },
-        })
+        successResponse('Question deactivated successfully', { id: question._id })
     );
 };
 
@@ -431,51 +360,50 @@ export const getQuestionsByCategory = async (req: CustomRequest, res: Response) 
  * @route GET /api/questions/export
  * @access Private (Admin/Super Admin)
  */
-export const exportQuestions = async (_req: CustomRequest, res: Response) => {
-    const questions = await questionModel.find().lean().exec();
+// export const exportQuestions = async (_req: CustomRequest, res: Response) => {
+//     const questions = await questionModel.find().lean().exec();
 
-    const csvData = questions.map((q) => ({
-        id: q.id,
-        type: q.type,
-        question: q.question,
-        marks: q.marks,
-        difficulty: q.difficulty,
-        tags: q.tags?.join(',') ?? '',
-        // MCQ
-        options: q.type === 'mcq' ? JSON.stringify(q.options) : '',
-        negativeMarks: q.type === 'mcq' ? q.negativeMarks : '',
-        answerExplanation: q.type === 'mcq' ? q.answerExplanation : '',
-        questionExplanation: q.type === 'mcq' ? q.questionExplanation : '',
-        // Coding
-        starterCode: q.type === 'coding' ? q.starterCode : '',
-        testCases: q.type === 'coding' ? JSON.stringify(q.testCases) : '',
-        constraints: q.type === 'coding' ? q.constraints : '',
-        hints: q.type === 'coding' ? JSON.stringify(q.hints) : '',
-        // Query
-        databaseType: q.type === 'query' ? q.databaseType : '',
-        databaseSchema: q.type === 'query' ? q.databaseSchema : '',
-        sampleData: q.type === 'query' ? q.sampleData : '',
-        expectedQuery: q.type === 'query' ? q.expectedQuery : '',
-        // Subjective
-        minLength: q.type === 'subjective' ? q.minLength : '',
-        maxLength: q.type === 'subjective' ? q.maxLength : '',
-        expectedKeywords: q.type === 'subjective' ? JSON.stringify(q.expectedKeywords) : '',
-    }));
+//     const csvData = questions.map((q) => ({
+//         type: q.type,
+//         question: q.question,
+//         marks: q.marks,
+//         difficulty: q.difficulty,
+//         tags: q.tags?.join(',') ?? '',
+//         // MCQ
+//         options: q.type === 'mcq' ? JSON.stringify(q.options) : '',
+//         negativeMarks: q.type === 'mcq' ? q.negativeMarks : '',
+//         answerExplanation: q.type === 'mcq' ? q.answerExplanation : '',
+//         questionExplanation: q.type === 'mcq' ? q.questionExplanation : '',
+//         // Coding
+//         starterCode: q.type === 'coding' ? q.starterCode : '',
+//         testCases: q.type === 'coding' ? JSON.stringify(q.testCases) : '',
+//         constraints: q.type === 'coding' ? q.constraints : '',
+//         hints: q.type === 'coding' ? JSON.stringify(q.hints) : '',
+//         // Query
+//         databaseType: q.type === 'query' ? q.databaseType : '',
+//         databaseSchema: q.type === 'query' ? q.databaseSchema : '',
+//         sampleData: q.type === 'query' ? q.sampleData : '',
+//         expectedQuery: q.type === 'query' ? q.expectedQuery : '',
+//         // Subjective
+//         minLength: q.type === 'subjective' ? q.minLength : '',
+//         maxLength: q.type === 'subjective' ? q.maxLength : '',
+//         expectedKeywords: q.type === 'subjective' ? JSON.stringify(q.expectedKeywords) : '',
+//     }));
 
-    const headers = Object.keys(csvData[0] || {});
+//     const headers = Object.keys(csvData[0] || {});
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=questions.csv');
+//     res.setHeader('Content-Type', 'text/csv');
+//     res.setHeader('Content-Disposition', 'attachment; filename=questions.csv');
 
-    let csvContent = headers.join(',') + '\n';
+//     let csvContent = headers.join(',') + '\n';
 
-    for (const row of csvData) {
-        const rowData = headers.map(header => {
-            const value = (row as Record<string, unknown>)[header];
-            return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
-        });
-        csvContent += rowData.join(',') + '\n';
-    }
+//     for (const row of csvData) {
+//         const rowData = headers.map(header => {
+//             const value = (row as Record<string, unknown>)[header];
+//             return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
+//         });
+//         csvContent += rowData.join(',') + '\n';
+//     }
 
-    return res.send(csvContent);
-};
+//     return res.send(csvContent);
+// };

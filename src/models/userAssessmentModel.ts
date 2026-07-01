@@ -1,13 +1,13 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { generateUniqueId } from '../utils/generateId';
-import { UserAssessmentStatus, VoilationType } from '../types/userAssessmentTypes';
+import { UserAssessmentStatus, ViolationType } from '../types/userAssessmentTypes';
 import { QuestionType } from '../types/questionTypes';
 
 export interface IUserAssessmentAnswer {
     questionId: Types.ObjectId,
     questionType: QuestionType,
     timeSpentInSeconds: number,
-    answerMCQ?: Types.ObjectId[],
+    answerMCQ: Types.ObjectId[],
     answerCoding?: string,
     answerQuery?: string,
     answerSubjective?: string,
@@ -31,10 +31,14 @@ export interface IUserAssessment extends Document {
     tabSwitches: number;
     fullscreenExits: number;
     violations: {
-        type: VoilationType;
+        type: ViolationType;
         timestamp: Date;
         details?: string;
     }[];
+
+    webcamAllowed: boolean;
+    microphoneAllowed: boolean;
+    recordingAllowed: boolean;
 
     evaluatedBy?: Types.ObjectId;
     evaluationDate?: Date;
@@ -75,7 +79,7 @@ const AnswerSchema = new Schema<IUserAssessmentAnswer>({
 const ViolationSchema = new Schema({
     type: {
         type: String,
-        enum: ['tab_switch', 'fullscreen_exit', 'no_webcam', 'multiple_faces', 'no_audio'],
+        enum: Object.values(ViolationType),
         required: true,
     },
     timestamp: { type: Date, default: Date.now },
@@ -88,11 +92,13 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
         userId: {
             type: Schema.Types.ObjectId,
             required: true,
+            index: true,
             ref: 'User'
         },
         assessmentId: {
             type: Schema.Types.ObjectId,
             required: true,
+            index: true,
             ref: 'Assessment'
         },
         status: {
@@ -121,6 +127,11 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
         recordingUrl: String,
         tabSwitches: { type: Number, default: 0 },
         fullscreenExits: { type: Number, default: 0 },
+
+        webcamAllowed: { type: Boolean, default: false },
+        microphoneAllowed: { type: Boolean, default: false },
+        recordingAllowed: { type: Boolean, default: false },
+
         violations: { type: [ViolationSchema], default: [] },
 
         evaluatedBy: {
@@ -129,7 +140,7 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
         },
         evaluationDate: Date,
         feedback: String,
-        isPassed: Boolean,
+        isPassed: { type: Boolean, default: false },
         createdBy: {
             type: Schema.Types.ObjectId,
             ref: 'User'

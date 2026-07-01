@@ -9,6 +9,7 @@ import logger from '../utils/logger';
 import userAssessmentModel from '../models/userAssessmentModel';
 import { UserAssessmentStatus } from '../types/userAssessmentTypes';
 import questionModel, { IQuestion } from '../models/questionModel';
+import userModel, { UserRole } from '../models/userModel';
 
 /**
  * Get assessments with filtering, pagination, and search
@@ -104,10 +105,7 @@ export const getAssessments = async (req: CustomRequest, res: Response) => {
 
 export const getAssessmentQuestions = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
-    const filter: QueryFilter<IAssessment> = isValidObjectId(id)
-        ? { _id: new Types.ObjectId(id as string) }
-        : { id: Number(id) };
-    const assessment = await assessmentModel.findOne(filter).select('questions').lean().exec();
+    const assessment = await assessmentModel.findById(id).select('questions').lean().exec();
 
     if (!assessment) {
         return res.status(HttpStatus.NOT_FOUND).json(
@@ -119,8 +117,6 @@ export const getAssessmentQuestions = async (req: CustomRequest, res: Response) 
         .find({ _id: { $in: assessment.questions } })
         .lean()
         .exec();
-
-    console.log('first=>', questions)
 
     return res.status(HttpStatus.OK).json(
         successResponse('Assessment questions fetched successfully', questions)
@@ -134,16 +130,7 @@ export const getAssessmentQuestions = async (req: CustomRequest, res: Response) 
  */
 export const getAssessmentById = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
-
-    // Use Mongoose's official utility to determine lookup strategy
-    const filter: QueryFilter<IAssessment> = isValidObjectId(id)
-        ? { _id: new Types.ObjectId(id as string) }       // Valid ObjectId string → look up by _id
-        : { id: Number(id) }; // Otherwise → look up by numeric id
-
-    const assessment = await assessmentModel
-        .findOne(filter)
-        .lean()
-        .exec();
+    const assessment = await assessmentModel.findById(id).lean().exec();
 
     if (!assessment) {
         return res.status(HttpStatus.NOT_FOUND).json(errorResponse('Assessment not found', 'Assessment not found'));
@@ -180,8 +167,7 @@ export const createAssessment = async (req: CustomRequest, res: Response) => {
             title, description, type, difficulty, durationInMinutes,
             totalMarks, passingMarks, questions, isActive, isPublic,
             startDate, endDate, tags, instructions,
-            requireWebcam, requireMicrophone, allowTabSwitch, maxTabSwitches,
-            allowFullscreenExit, maxFullscreenExits, enableRecording,
+            webcam, microphone, tabSwitch, fullscreenExit, enableRecording,
         } = req.body as IAssessment;
 
         const { _id: userId } = req.user!;
@@ -205,12 +191,10 @@ export const createAssessment = async (req: CustomRequest, res: Response) => {
             createdBy: userId,
             updatedBy: userId,
             // Proctoring settings
-            requireWebcam,
-            requireMicrophone,
-            allowTabSwitch,
-            maxTabSwitches,
-            allowFullscreenExit,
-            maxFullscreenExits,
+            webcam,
+            microphone,
+            tabSwitch,
+            fullscreenExit,
             enableRecording,
         });
 
@@ -243,11 +227,7 @@ export const createAssessment = async (req: CustomRequest, res: Response) => {
 export const updateAssessment = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
 
-    const filter: QueryFilter<IAssessment> = isValidObjectId(id)
-        ? { _id: new Types.ObjectId(id as string) }
-        : { id: Number(id) };
-
-    const assessment = await assessmentModel.findOne(filter).exec();
+    const assessment = await assessmentModel.findById(id).exec();
     if (!assessment) {
         return res.status(HttpStatus.NOT_FOUND).json(
             errorResponse('Assessment not found', 'No assessment found with the given ID')
@@ -259,8 +239,8 @@ export const updateAssessment = async (req: CustomRequest, res: Response) => {
         title, description, type, difficulty, durationInMinutes,
         totalMarks, passingMarks, questions,
         isActive, isPublic, startDate, endDate, tags, instructions,
-        requireWebcam, requireMicrophone, allowTabSwitch,
-        maxTabSwitches, allowFullscreenExit, maxFullscreenExits, enableRecording,
+        webcam, microphone, tabSwitch,
+        fullscreenExit, enableRecording,
     } = req.body as Partial<IAssessment>;
 
     if (title !== undefined) assessment.title = title;
@@ -277,12 +257,10 @@ export const updateAssessment = async (req: CustomRequest, res: Response) => {
     if (endDate !== undefined) assessment.endDate = endDate;
     if (tags !== undefined) assessment.tags = tags;
     if (instructions !== undefined) assessment.instructions = instructions;
-    if (requireWebcam !== undefined) assessment.requireWebcam = requireWebcam;
-    if (requireMicrophone !== undefined) assessment.requireMicrophone = requireMicrophone;
-    if (allowTabSwitch !== undefined) assessment.allowTabSwitch = allowTabSwitch;
-    if (maxTabSwitches !== undefined) assessment.maxTabSwitches = maxTabSwitches;
-    if (allowFullscreenExit !== undefined) assessment.allowFullscreenExit = allowFullscreenExit;
-    if (maxFullscreenExits !== undefined) assessment.maxFullscreenExits = maxFullscreenExits;
+    if (webcam !== undefined) assessment.webcam = webcam;
+    if (microphone !== undefined) assessment.microphone = microphone;
+    if (tabSwitch !== undefined) assessment.tabSwitch = tabSwitch;
+    if (fullscreenExit !== undefined) assessment.fullscreenExit = fullscreenExit;
     if (enableRecording !== undefined) assessment.enableRecording = enableRecording;
 
     // Track who updated
@@ -309,11 +287,7 @@ export const updateAssessment = async (req: CustomRequest, res: Response) => {
 export const deleteAssessment = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
 
-    const filter: QueryFilter<IAssessment> = isValidObjectId(id)
-        ? { _id: new Types.ObjectId(id as string) }
-        : { id: Number(id) };
-
-    const assessment = await assessmentModel.findOne(filter).exec();
+    const assessment = await assessmentModel.findById(id).exec();
     if (!assessment) {
         return res.status(HttpStatus.NOT_FOUND).json(
             errorResponse('Assessment not found', 'No assessment found with the given ID')
@@ -336,11 +310,10 @@ export const deleteAssessment = async (req: CustomRequest, res: Response) => {
  */
 export const getUserAssessments = async (req: CustomRequest, res: Response) => {
     const { userId } = req.params;
-    const numericUserId = Number(userId);
 
     // Permission check: users can only view their own, admins can view any
-    const isOwnUser = req.user!.userId === numericUserId;
-    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'super_admin';
+    const isOwnUser = String(req.user!._id) === userId;
+    const isAdmin = req.user!.role === UserRole.ADMIN || req.user!.role === UserRole.SUPER_ADMIN;
 
     if (!isOwnUser && !isAdmin) {
         return res.status(HttpStatus.FORBIDDEN).json(
@@ -349,15 +322,15 @@ export const getUserAssessments = async (req: CustomRequest, res: Response) => {
     }
 
     // Find the user's _id from the numeric id, then query assessments by createdBy
-    const userDoc = await import('../models/userModel').then(m => m.default.findOne({ id: numericUserId }).select('_id').lean().exec());
-    if (!userDoc) {
+    const user = await userModel.findById(userId).select('_id').lean().exec();
+    if (!user) {
         return res.status(HttpStatus.NOT_FOUND).json(
             errorResponse('User not found', 'No user found with the given ID')
         );
     }
 
     const assessments = await assessmentModel
-        .find({ createdBy: userDoc._id })
+        .find({ createdBy: user._id })
         .select('-__v')
         .sort({ createdAt: -1 })
         .lean()
@@ -371,8 +344,8 @@ export const getUserAssessments = async (req: CustomRequest, res: Response) => {
 export const startAssessment = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
 
-    const assessment = await assessmentModel.findOne({
-        assessmentId: req.params.id,
+    const assessment = await assessmentModel.findById({
+        _id: req.params.id,
         isActive: true,
     });
 

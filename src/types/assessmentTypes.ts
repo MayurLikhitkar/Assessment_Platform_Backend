@@ -15,6 +15,16 @@ export enum AssessmentDifficulty {
     EXPERT = 'expert',
 }
 
+export interface ILimit {
+    allowed: boolean
+    max?: number
+}
+
+export interface IRecord {
+    allowed: boolean
+    url?: string
+}
+
 export type AssessmentSortableFields = Pick<IAssessment, 'createdAt' | 'title' | 'difficulty' | 'durationInMinutes' | 'startDate' | 'endDate'>;
 
 export interface GetAssessmentQuery {

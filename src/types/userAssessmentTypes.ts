@@ -6,7 +6,7 @@ export enum UserAssessmentStatus {
     TERMINATED = 'terminated',
 }
 
-export enum VoilationType {
+export enum ViolationType {
     TAB_SWITCH = 'tab_switch',
     FULLSCREEN_EXIT = 'fullscreen_exit',
     NO_WEBCAM = 'no_webcam',

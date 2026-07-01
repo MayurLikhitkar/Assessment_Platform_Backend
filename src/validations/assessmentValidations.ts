@@ -59,11 +59,16 @@ export const createAssessmentValidation = [
 
     body('durationInMinutes')
         .notEmpty().withMessage('Duration is required')
-        .isInt({ min: 10, max: 240 }).withMessage('Duration must be between 10 and 240 minutes')
+        .isInt({ min: 5, max: 300 }).withMessage('Duration must be between 5 and 300 minutes')
         .toInt(),
 
     body('totalMarks').optional().isInt({ min: 1 }).withMessage('Total marks must be >= 1').toInt(),
-    body('passingMarks').optional().isInt({ min: 1 }).withMessage('Passing marks must be >= 1').toInt(),
+    body('passingMarks').custom((value, { req }) => {
+        if (req.body.totalMarks && value > req.body.totalMarks) {
+            throw new Error('Passing marks cannot exceed total marks');
+        }
+        return true;
+    }).isInt({ min: 0 }).withMessage('Passing marks must be greater than or equal to 0').toInt(),
     body('questions').optional().isArray().withMessage('Questions must be an array'),
     body('questions.*').optional().isMongoId().withMessage('Each question must be a valid MongoDB ObjectId'),
 
@@ -71,7 +76,10 @@ export const createAssessmentValidation = [
         .optional()
         .isISO8601().withMessage('Start date must be a valid ISO 8601 date')
         .custom((value) => {
-            if (new Date(value) < new Date()) {
+            const now = new Date();
+            now.setSeconds(0, 0);
+
+            if (new Date(value) < now) {
                 throw new Error('Start date cannot be in the past');
             }
             return true;
@@ -111,9 +119,19 @@ export const createAssessmentValidation = [
     body('requireWebcam').optional().isBoolean().withMessage('requireWebcam must be a boolean').toBoolean(),
     body('requireMicrophone').optional().isBoolean().withMessage('requireMicrophone must be a boolean').toBoolean(),
     body('allowTabSwitch').optional().isBoolean().withMessage('allowTabSwitch must be a boolean').toBoolean(),
-    body('maxTabSwitches').optional().isInt({ min: 0, max: 10 }).withMessage('maxTabSwitches must be between 0 and 10').toInt(),
+    body('maxTabSwitches').optional().custom((value, { req }) => {
+        if (!req.body.allowTabSwitch && value !== undefined) {
+            throw new Error('maxTabSwitches only allowed if allowTabSwitch is true');
+        }
+        return true;
+    }).toInt(),
     body('allowFullscreenExit').optional().isBoolean().withMessage('allowFullscreenExit must be a boolean').toBoolean(),
-    body('maxFullscreenExits').optional().isInt({ min: 0, max: 10 }).withMessage('maxFullscreenExits must be between 0 and 10').toInt(),
+    body('maxFullscreenExits').optional().custom((value, { req }) => {
+        if (!req.body.allowFullscreenExit && value !== undefined) {
+            throw new Error('maxFullscreenExits only allowed if allowFullscreenExit is true');
+        }
+        return true;
+    }).toInt(),
     body('enableRecording').optional().isBoolean().withMessage('enableRecording must be a boolean').toBoolean(),
 
     validate

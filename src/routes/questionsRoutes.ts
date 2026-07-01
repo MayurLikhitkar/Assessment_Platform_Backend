@@ -6,7 +6,7 @@ import {
     createQuestion,
     updateQuestion,
     deleteQuestion,
-    exportQuestions,
+    // exportQuestions,
 } from '../controllers/questionController';
 import { asyncHandler } from '../utils/asyncHandler';
 import {
@@ -28,12 +28,12 @@ router.get('/:id', getQuestionByIdValidation, asyncHandler(getQuestionById));
 // ─── Protected routes (Admin / Super Admin) ───────────────────────────
 
 // Export must be declared BEFORE /:id routes to avoid matching "export" as an :id
-router.get(
-    '/export',
-    authenticate,
-    authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    asyncHandler(exportQuestions)
-);
+// router.get(
+//     '/export',
+//     authenticate,
+//     authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+//     asyncHandler(exportQuestions)
+// );
 
 router.post(
     '/',

@@ -1,9 +1,9 @@
 import { Request } from "express";
 import { UserRole } from "../models/userModel";
+import { Types } from "mongoose";
 
 export interface TokenPayload {
-    _id: string;
-    userId: number;
+    _id: Types.ObjectId;
     email: string;
     role: UserRole;
 }

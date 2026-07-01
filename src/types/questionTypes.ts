@@ -42,6 +42,36 @@ export interface IOption {
     isCorrect: boolean;
 }
 
+export interface IMcqFields {
+    options: IOption[];
+    isMultiSelect: boolean;
+}
+
+export interface ICodingFields {
+    programmingLanguages: ProgrammingLanguage[];
+    starterCode?: Partial<Record<ProgrammingLanguage, string>>;
+    solutionCode?: Partial<Record<ProgrammingLanguage, string>>;
+    testCases: ITestCase[];
+    constraints?: string[];
+    memoryLimitInMB: number;
+}
+
+export interface IQueryFields {
+    databaseType: DatabaseType;
+    databaseSchema?: string;
+    sampleData?: string;
+    expectedQuery: string;
+    allowedKeywords?: string[];
+    forbiddenKeywords?: string[];
+}
+
+export interface ISubjectiveFields {
+    minLength: number;
+    maxLength: number;
+    expectedKeywords: string[];
+    sampleAnswer?: string;
+}
+
 import { IQuestion } from "../models/questionModel";
 
 export type QuestionSortableFields = Pick<IQuestion, 'createdAt' | 'difficulty' | 'marks' | 'timeLimitInSeconds'>;

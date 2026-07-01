@@ -49,8 +49,7 @@ export const login = async (req: Request, res: Response) => {
     await user.save();
 
     const tokens = generateTokens({
-        _id: user._id.toString(),
-        userId: user.id,
+        _id: user._id,
         email: user.email,
         role: user.role,
     });
@@ -88,8 +87,7 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     // Generate new tokens
     const tokens = generateTokens({
-        _id: user._id.toString(),
-        userId: user.id,
+        _id: user._id,
         email: user.email,
         role: user.role,
     });
