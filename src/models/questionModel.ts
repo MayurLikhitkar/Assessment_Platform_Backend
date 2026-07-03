@@ -15,13 +15,14 @@ export interface IQuestion extends Document {
     isActive: boolean;
     createdBy: Types.ObjectId;
     updatedBy: Types.ObjectId;
-    createdAt: Date;
-    updatedAt: Date;
 
     mcqFields?: IMcqFields;
     codingFields?: ICodingFields;
     queryFields?: IQueryFields;
     subjectiveFields?: ISubjectiveFields;
+
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 interface IQuestionMethods {
@@ -183,10 +184,10 @@ const questionSchema = new Schema<IQuestion, Model<IQuestion>, IQuestionMethods>
         },
 
         // MCQ fields
-        mcqFields: { type: McqFieldsSchema },
-        codingFields: { type: CodingFieldsSchema },
-        queryFields: { type: QueryFieldsSchema },
-        subjectiveFields: { type: SubjectiveFieldsSchema },
+        mcqFields: { type: McqFieldsSchema, default: undefined },
+        codingFields: { type: CodingFieldsSchema, default: undefined },
+        queryFields: { type: QueryFieldsSchema, default: undefined },
+        subjectiveFields: { type: SubjectiveFieldsSchema, default: undefined },
     },
     {
         timestamps: true,

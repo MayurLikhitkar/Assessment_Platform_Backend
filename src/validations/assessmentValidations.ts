@@ -1,4 +1,4 @@
-import { body, oneOf, param, query } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import validate from './validate';
 import { AssessmentDifficulty, AssessmentType } from '../types/assessmentTypes';
 
@@ -38,12 +38,158 @@ export const createAssessmentValidation = [
         .isLength({ max: 200 }).withMessage('Title cannot exceed 200 characters'),
 
     body('description')
-        .optional({ values: 'falsy' })
         .trim()
+        .notEmpty().withMessage('Description is required')
         .isString().withMessage('Description must be a string')
-        .isLength({ max: 1000 }).withMessage('Description cannot exceed 1000 characters'),
+        .isLength({ max: 10000 }).withMessage('Description cannot exceed 10000 characters'),
 
     body('type')
+        .isArray({ min: 1 }).withMessage('Atleast 1 type is required')
+        .custom((types: AssessmentType[]) => {
+            const validTypes = new Set(Object.values(AssessmentType));
+            return types.every((t) => validTypes.has(t));
+        })
+        .withMessage('Type must be one of: ' + Object.values(AssessmentType).join(', ')),
+
+    body('difficulty')
+        .trim()
+        .isIn(Object.values(AssessmentDifficulty))
+        .notEmpty().withMessage('Difficulty is required')
+        .withMessage('Difficulty must be one of: ' + Object.values(AssessmentDifficulty).join(', ')),
+
+    body('durationInMinutes')
+        .notEmpty().withMessage('Duration is required')
+        .isInt({ min: 5, max: 300 }).withMessage('Duration must be between 5 and 300 minutes')
+        .toInt(),
+
+    body('totalMarks').optional().isInt({ min: 0 }).withMessage('Total marks must be greater than or equal to 0').toInt(),
+    body('passingMarks').optional()
+        .isInt({ min: 0 }).withMessage('Passing marks must be greater than or equal to 0')
+        .custom((value: number, { req }) => {
+            if (req.body.totalMarks !== undefined && value > Number(req.body.totalMarks)) {
+                throw new Error('Passing marks cannot exceed total marks');
+            }
+            return true;
+        }).toInt(),
+    body('questions').optional().isArray().withMessage('Questions must be an array')
+        .custom((questions: string[]) => {
+            const unique = new Set(questions.map(t => t.toString()));
+            if (unique.size !== questions.length) throw new Error('Duplicate questions not allowed');
+            return true;
+        }),
+    body('questions.*').optional().trim().isMongoId().withMessage('Each question must be a valid MongoDB ObjectId'),
+
+    body('startDate')
+        .optional()
+        .isISO8601().withMessage('Start date must be a valid ISO 8601 date')
+        .custom((value) => {
+            const now = new Date();
+            now.setSeconds(0, 0);
+
+            if (new Date(value) < now) {
+                throw new Error('Start date cannot be in the past');
+            }
+            return true;
+        })
+        .toDate(),
+
+    body('endDate')
+        .optional()
+        .isISO8601().withMessage('End date must be a valid ISO 8601 date')
+        .custom((value, { req }) => {
+            if (req.body.startDate && new Date(value) <= new Date(req.body.startDate)) {
+                throw new Error('End date must be after start date');
+            }
+            return true;
+        })
+        .toDate(),
+
+    body('tags')
+        .notEmpty().withMessage('Tags are required')
+        .isArray({ min: 1 }).withMessage('At least one tag is required')
+        .custom((tags: string[]) => {
+            const unique = new Set(tags.map(t => t.toLowerCase()));
+            if (unique.size !== tags.length) throw new Error('Duplicate tags not allowed');
+            return true;
+        }),
+    body('tags.*')
+        .isString().withMessage('Each tag must be a string')
+        .trim()
+        .notEmpty().withMessage('Tags cannot be empty strings'),
+
+    body('instructions')
+        .optional({ values: 'falsy' })
+        .trim()
+        .isString().withMessage('Instructions must be a string')
+        .isLength({ max: 5000 }).withMessage('Instructions cannot exceed 5000 characters'),
+
+    body('isActive').optional().isBoolean().withMessage('isActive must be a boolean').toBoolean(),
+    body('isPublic').optional().isBoolean().withMessage('isPublic must be a boolean').toBoolean(),
+    body('negativeMarking').optional().isBoolean().withMessage('Negative Marking must be a boolean').toBoolean(),
+
+    // Proctoring settings
+    body('webcam')
+        .optional()
+        .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
+        .withMessage('Webcam fields must be an object'),
+    body('webcam.allowed').optional()
+        .isBoolean().withMessage('allowed must be a boolean').toBoolean(),
+    body('webcam.url').optional()
+        .isString().withMessage('URL must be a string'),
+    body('microphone')
+        .optional()
+        .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
+        .withMessage('Microphone fields must be an object'),
+    body('microphone.allowed').optional()
+        .isBoolean().withMessage('allowed must be a boolean').toBoolean(),
+    body('microphone.url').optional()
+        .isString().withMessage('URL must be a string'),
+    body('tabSwitch')
+        .optional()
+        .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
+        .withMessage('TabSwitch fields must be an object'),
+    body('tabSwitch.allowed').optional()
+        .isBoolean().withMessage('allowed must be a boolean').toBoolean(),
+    body('tabSwitch.max').optional()
+        .isInt({ min: 0 }).withMessage('Maximum tab switches must be a non-negative integer').toInt(),
+    body('fullscreenExit')
+        .optional()
+        .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
+        .withMessage('FullscreenExit fields must be an object'),
+    body('fullscreenExit.allowed').optional()
+        .isBoolean().withMessage('allowed must be a boolean').toBoolean(),
+    body('fullscreenExit.max').optional()
+        .isInt({ min: 0 }).withMessage('Maximum fullscreen exits must be a non-negative integer').toInt(),
+    body('enableRecording').optional().isBoolean().withMessage('enableRecording must be a boolean').toBoolean(),
+
+    validate
+];
+
+export const getAssessmentByIdValidation = [
+    param('id').isMongoId().withMessage('ID must be a valid MongoDB ObjectId'),
+
+    validate
+];
+
+export const updateAssessmentValidation = [
+    // Param validation
+    param('id').isMongoId().withMessage('ID must be a valid MongoDB ObjectId'),
+
+    // All body fields optional for partial update
+    body('title')
+        .optional()
+        .trim()
+        .isString().withMessage('Title must be a string')
+        .isLength({ max: 200 }).withMessage('Title cannot exceed 200 characters'),
+
+    body('description')
+        .optional()
+        .trim()
+        .isString().withMessage('Description must be a string')
+        .isLength({ max: 10000 }).withMessage('Description cannot exceed 10000 characters'),
+
+    body('type')
+        .optional()
         .isArray({ min: 1 }).withMessage('Type must be a non-empty array')
         .custom((types: AssessmentType[]) => {
             const validTypes = new Set(Object.values(AssessmentType));
@@ -58,19 +204,27 @@ export const createAssessmentValidation = [
         .withMessage('Difficulty must be one of: ' + Object.values(AssessmentDifficulty).join(', ')),
 
     body('durationInMinutes')
-        .notEmpty().withMessage('Duration is required')
+        .optional()
         .isInt({ min: 5, max: 300 }).withMessage('Duration must be between 5 and 300 minutes')
         .toInt(),
 
-    body('totalMarks').optional().isInt({ min: 1 }).withMessage('Total marks must be >= 1').toInt(),
-    body('passingMarks').custom((value, { req }) => {
-        if (req.body.totalMarks && value > req.body.totalMarks) {
-            throw new Error('Passing marks cannot exceed total marks');
-        }
-        return true;
-    }).isInt({ min: 0 }).withMessage('Passing marks must be greater than or equal to 0').toInt(),
-    body('questions').optional().isArray().withMessage('Questions must be an array'),
-    body('questions.*').optional().isMongoId().withMessage('Each question must be a valid MongoDB ObjectId'),
+    body('totalMarks').optional().isInt({ min: 0 }).withMessage('Total marks must be greater than or equal to 0').toInt(),
+    body('passingMarks')
+        .optional()
+        .isInt({ min: 0 }).withMessage('Passing marks must be greater than or equal to 0')
+        .custom((value: number, { req }) => {
+            if (req.body.totalMarks !== undefined && value > Number(req.body.totalMarks)) {
+                throw new Error('Passing marks cannot exceed total marks');
+            }
+            return true;
+        }).toInt(),
+    body('questions').optional().isArray().withMessage('Questions must be an array')
+        .custom((questions: string[]) => {
+            const unique = new Set(questions.map(t => t.toString()));
+            if (unique.size !== questions.length) throw new Error('Duplicate questions not allowed');
+            return true;
+        }),
+    body('questions.*').optional().trim().isMongoId().withMessage('Each question must be a valid MongoDB ObjectId'),
 
     body('startDate')
         .optional()
@@ -99,128 +253,60 @@ export const createAssessmentValidation = [
 
     body('tags')
         .optional()
-        .isArray().withMessage('Tags must be an array'),
-
+        .isArray({ min: 1 }).withMessage('At least one tag is required')
+        .custom((tags: string[]) => {
+            const unique = new Set(tags.map(t => t.toLowerCase()));
+            if (unique.size !== tags.length) throw new Error('Duplicate tags not allowed');
+            return true;
+        }),
     body('tags.*')
-        .optional()
-        .trim()
         .isString().withMessage('Each tag must be a string')
+        .trim()
         .notEmpty().withMessage('Tags cannot be empty strings'),
 
     body('instructions')
-        .optional()
+        .optional({ values: 'falsy' })
         .trim()
         .isString().withMessage('Instructions must be a string')
         .isLength({ max: 5000 }).withMessage('Instructions cannot exceed 5000 characters'),
 
     body('isActive').optional().isBoolean().withMessage('isActive must be a boolean').toBoolean(),
     body('isPublic').optional().isBoolean().withMessage('isPublic must be a boolean').toBoolean(),
-    // Proctoring settings
-    body('requireWebcam').optional().isBoolean().withMessage('requireWebcam must be a boolean').toBoolean(),
-    body('requireMicrophone').optional().isBoolean().withMessage('requireMicrophone must be a boolean').toBoolean(),
-    body('allowTabSwitch').optional().isBoolean().withMessage('allowTabSwitch must be a boolean').toBoolean(),
-    body('maxTabSwitches').optional().custom((value, { req }) => {
-        if (!req.body.allowTabSwitch && value !== undefined) {
-            throw new Error('maxTabSwitches only allowed if allowTabSwitch is true');
-        }
-        return true;
-    }).toInt(),
-    body('allowFullscreenExit').optional().isBoolean().withMessage('allowFullscreenExit must be a boolean').toBoolean(),
-    body('maxFullscreenExits').optional().custom((value, { req }) => {
-        if (!req.body.allowFullscreenExit && value !== undefined) {
-            throw new Error('maxFullscreenExits only allowed if allowFullscreenExit is true');
-        }
-        return true;
-    }).toInt(),
-    body('enableRecording').optional().isBoolean().withMessage('enableRecording must be a boolean').toBoolean(),
-
-    validate
-];
-
-export const getAssessmentByIdValidation = [
-    oneOf([
-        param('id').isInt({ min: 1 }).withMessage('ID must be a positive integer'),
-        param('id').isMongoId().withMessage('ID must be a valid MongoDB ObjectId'),
-    ], { message: 'ID must be a valid MongoDB ObjectId or a positive integer' }),
-
-    validate
-];
-
-export const updateAssessmentValidation = [
-    // Param validation
-    oneOf([
-        param('id').isInt({ min: 1 }).withMessage('ID must be a positive integer'),
-        param('id').isMongoId().withMessage('ID must be a valid MongoDB ObjectId'),
-    ], { message: 'ID must be a valid MongoDB ObjectId or a positive integer' }),
-
-    // All body fields optional for partial update
-    body('title')
-        .optional()
-        .trim()
-        .isString().withMessage('Title must be a string')
-        .isLength({ max: 200 }).withMessage('Title cannot exceed 200 characters'),
-
-    body('description')
-        .optional()
-        .trim()
-        .isString().withMessage('Description must be a string')
-        .isLength({ max: 1000 }).withMessage('Description cannot exceed 1000 characters'),
-
-    body('type')
-        .optional()
-        .isArray({ min: 1 }).withMessage('Type must be a non-empty array')
-        .custom((types: AssessmentType[]) => {
-            const validTypes = new Set(Object.values(AssessmentType));
-            return types.every((t) => validTypes.has(t));
-        })
-        .withMessage('Type must be one of: ' + Object.values(AssessmentType).join(', ')),
-
-    body('difficulty')
-        .optional()
-        .trim()
-        .isIn(Object.values(AssessmentDifficulty))
-        .withMessage('Difficulty must be one of: ' + Object.values(AssessmentDifficulty).join(', ')),
-
-    body('durationInMinutes')
-        .optional()
-        .isInt({ min: 10, max: 240 }).withMessage('Duration must be between 10 and 240 minutes')
-        .toInt(),
-
-    body('totalMarks').optional().isInt({ min: 0 }).withMessage('Total marks must be >= 0').toInt(),
-    body('passingMarks').optional().isInt({ min: 0 }).withMessage('Passing marks must be >= 0').toInt(),
-    body('questions').optional().isArray().withMessage('Questions must be an array'),
-    body('questions.*').optional().isMongoId().withMessage('Each question must be a valid MongoDB ObjectId'),
-    body('isActive').optional().isBoolean().withMessage('isActive must be a boolean').toBoolean(),
-    body('isPublic').optional().isBoolean().withMessage('isPublic must be a boolean').toBoolean(),
-
-    body('startDate').optional().isISO8601().withMessage('Start date must be a valid ISO 8601 date').toDate(),
-    body('endDate')
-        .optional()
-        .isISO8601().withMessage('End date must be a valid ISO 8601 date')
-        .custom((value, { req }) => {
-            if (req.body.startDate && new Date(value) <= new Date(req.body.startDate)) {
-                throw new Error('End date must be after start date');
-            }
-            return true;
-        })
-        .toDate(),
-
-    body('tags').optional().isArray().withMessage('Tags must be an array'),
-    body('tags.*').optional().trim().isString().withMessage('Each tag must be a string').notEmpty().withMessage('Tags cannot be empty strings'),
-
-    body('instructions')
-        .optional()
-        .trim()
-        .isString().withMessage('Instructions must be a string')
-        .isLength({ max: 5000 }).withMessage('Instructions cannot exceed 5000 characters'),
+    body('negativeMarking').optional().isBoolean().withMessage('Negative Marking must be a boolean').toBoolean(),
 
     // Proctoring settings
-    body('requireWebcam').optional().isBoolean().withMessage('requireWebcam must be a boolean').toBoolean(),
-    body('requireMicrophone').optional().isBoolean().withMessage('requireMicrophone must be a boolean').toBoolean(),
-    body('allowTabSwitch').optional().isBoolean().withMessage('allowTabSwitch must be a boolean').toBoolean(),
-    body('maxTabSwitches').optional().isInt({ min: 0, max: 10 }).withMessage('maxTabSwitches must be between 0 and 10').toInt(),
-    body('allowFullscreenExit').optional().isBoolean().withMessage('allowFullscreenExit must be a boolean').toBoolean(),
-    body('maxFullscreenExits').optional().isInt({ min: 0, max: 10 }).withMessage('maxFullscreenExits must be between 0 and 10').toInt(),
+    body('webcam')
+        .optional()
+        .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
+        .withMessage('Webcam fields must be an object'),
+    body('webcam.allowed').optional()
+        .isBoolean().withMessage('allowed must be a boolean').toBoolean(),
+    body('webcam.url').optional()
+        .isString().withMessage('URL must be a string'),
+    body('microphone')
+        .optional()
+        .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
+        .withMessage('Microphone fields must be an object'),
+    body('microphone.allowed').optional()
+        .isBoolean().withMessage('allowed must be a boolean').toBoolean(),
+    body('microphone.url').optional()
+        .isString().withMessage('URL must be a string'),
+    body('tabSwitch')
+        .optional()
+        .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
+        .withMessage('TabSwitch fields must be an object'),
+    body('tabSwitch.allowed').optional()
+        .isBoolean().withMessage('allowed must be a boolean').toBoolean(),
+    body('tabSwitch.max').optional()
+        .isInt({ min: 0 }).withMessage('Maximum tab switches must be a non-negative integer').toInt(),
+    body('fullscreenExit')
+        .optional()
+        .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
+        .withMessage('FullscreenExit fields must be an object'),
+    body('fullscreenExit.allowed').optional()
+        .isBoolean().withMessage('allowed must be a boolean').toBoolean(),
+    body('fullscreenExit.max').optional()
+        .isInt({ min: 0 }).withMessage('Maximum fullscreen exits must be a non-negative integer').toInt(),
     body('enableRecording').optional().isBoolean().withMessage('enableRecording must be a boolean').toBoolean(),
 
     validate

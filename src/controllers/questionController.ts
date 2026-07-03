@@ -5,7 +5,7 @@ import questionModel, { IQuestion } from '../models/questionModel';
 import { CustomRequest } from '../types/authTypes';
 import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
-import { GetQuestionQuery } from '../types/questionTypes';
+import { GetQuestionQuery, QuestionType } from '../types/questionTypes';
 
 /**
  * Get questions with filtering, pagination, and search
@@ -96,7 +96,7 @@ export const getQuestions = async (req: CustomRequest, res: Response) => {
  */
 export const getQuestionById = async (req: CustomRequest, res: Response) => {
     const question = await questionModel
-        .findOne({ id: req.params.id })
+        .findById(req.params.id)
         .select('-__v')
         // .populate('categoryId', 'name description')
         .lean()
@@ -122,44 +122,48 @@ export const createQuestion = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
     console.log('req.body==>', req.body);
 
-    const {
-        type,
-        question,
-        marks,
-        difficulty,
-        tags,
-        isActive,
-        negativeMarks,
-        answerExplanation,
-        questionExplanation,
-        hints,
-        timeLimitInSeconds,
-
-        mcqFields,
-        codingFields,
-        queryFields,
-        subjectiveFields,
+    const { type, question, marks, difficulty, tags, isActive, negativeMarks, answerExplanation, questionExplanation, hints, timeLimitInSeconds,
+        mcqFields, codingFields, queryFields, subjectiveFields,
     } = req.body as IQuestion;
 
-    const newQuestion = new questionModel({
+    const questionData: Partial<IQuestion> = {
         type,
         question,
+        questionExplanation,
+        answerExplanation,
         marks,
+        negativeMarks,
         difficulty,
+        timeLimitInSeconds,
         tags,
-        isActive: isActive !== false,
+        hints,
+        isActive,
         createdBy: userId,
         updatedBy: userId,
-        negativeMarks,
-        answerExplanation,
-        questionExplanation,
-        hints,
-        timeLimitInSeconds,
-        mcqFields,
-        codingFields,
-        queryFields,
-        subjectiveFields,
-    });
+    };
+
+    switch (type) {
+        case QuestionType.MCQ:
+            questionData.mcqFields = {
+                options: mcqFields?.options?.map((opt) => ({
+                    text: opt.text,
+                    isCorrect: opt.isCorrect
+                })) || [],
+                isMultiSelect: mcqFields?.isMultiSelect ?? false
+            };
+            break;
+        case QuestionType.CODING:
+            questionData.codingFields = codingFields;
+            break;
+        case QuestionType.QUERY:
+            questionData.queryFields = queryFields;
+            break;
+        case QuestionType.SUBJECTIVE:
+            questionData.subjectiveFields = subjectiveFields;
+            break;
+    }
+
+    const newQuestion = new questionModel(questionData);
 
     await newQuestion.save();
 
@@ -184,11 +188,9 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
 
     const { id } = req.params;
-    const filter: QueryFilter<IQuestion> = isValidObjectId(id)
-        ? { _id: new Types.ObjectId(id as string) }
-        : { id: Number(id) };
+    const { type, mcqFields, codingFields, queryFields, subjectiveFields, } = req.body as IQuestion;
 
-    const question = await questionModel.findOne(filter);
+    const question = await questionModel.findById(id);
 
     if (!question) {
         return res.status(HttpStatus.NOT_FOUND).json(
@@ -196,27 +198,47 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
         );
     }
 
-    // Whitelist allowed update fields — prevent overwriting id, _id, createdBy, etc.
-    const allowedFields = [
-        'type', 'question', 'marks', 'difficulty', 'categoryId', 'tags', 'isActive',
-        // MCQ
-        'options', 'allowMultiple', 'negativeMarks', 'answerExplanation', 'questionExplanation',
-        // Coding
-        'language', 'allowedLanguages', 'starterCode', 'testCases',
-        'constraints', 'hints', 'timeLimitInSeconds', 'memoryLimitInMB',
-        // Query
-        'databaseType', 'databaseSchema', 'sampleData', 'expectedQuery',
-        // Subjective
-        'minLength', 'maxLength', 'expectedKeywords', 'evaluationRubric',
-    ] as const;
+    const allowedFields: (keyof IQuestion)[] = [
+        'type', 'question', 'marks', 'difficulty', 'questionExplanation', 'answerExplanation', 'tags', 'isActive',
+        'negativeMarks', 'timeLimitInSeconds', 'hints',
+    ];
 
     for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
-            (question as any)[field] = req.body[field];
+            question.set(field, req.body[field]);
         }
     }
 
-    question.updatedBy = new Types.ObjectId(userId);
+    switch (type) {
+        case QuestionType.MCQ:
+            if (mcqFields) {
+                question.mcqFields = {
+                    options: mcqFields.options?.map((opt) => ({
+                        text: opt.text,
+                        isCorrect: opt.isCorrect
+                    })) || [],
+                    isMultiSelect: mcqFields.isMultiSelect ?? false
+                };
+            }
+            break;
+        case QuestionType.CODING:
+            if (codingFields) {
+                question.codingFields = codingFields;
+            }
+            break;
+        case QuestionType.QUERY:
+            if (queryFields) {
+                question.queryFields = queryFields;
+            }
+            break;
+        case QuestionType.SUBJECTIVE:
+            if (subjectiveFields) {
+                question.subjectiveFields = subjectiveFields;
+            }
+            break;
+    }
+
+    question.updatedBy = userId;
 
     await question.save();
 

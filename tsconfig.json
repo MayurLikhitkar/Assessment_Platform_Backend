@@ -21,7 +21,6 @@
     "declaration": true,
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
     // Style Options
     // "noUnusedLocals": true,
     // "noUnusedParameters": true,

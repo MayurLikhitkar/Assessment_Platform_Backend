@@ -1,8 +1,8 @@
 import { Response, NextFunction } from 'express';
-import userModel, { UserRole, UserStatus } from '../models/userModel';
+import userModel from '../models/userModel';
 import { verifyToken } from '../utils/jwt';
 import { HttpStatus } from '../utils/constants';
-import { CustomRequest } from '../types/authTypes';
+import { CustomRequest, UserRole, UserStatus } from '../types/authTypes';
 import { errorResponse } from '../utils/responseHandler';
 import logger from '../utils/logger';
 

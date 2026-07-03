@@ -1,63 +1,119 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { generateUniqueId } from '../utils/generateId';
-
-export enum UserRole {
-    USER = 'user',
-    EVALUATOR = 'evaluator',
-    ADMIN = 'admin',
-    SUPER_ADMIN = 'super_admin',
-    PROCTOR = 'proctor', // important for live proctoring
-}
-
-export enum UserStatus {
-    ACTIVE = 'active',
-    INACTIVE = 'inactive',
-    SUSPENDED = 'suspended',
-    BANNED = 'banned',
-}
+import { Email, Location, PersonalInfo, Phone, Qualification, SocialProfile, UserRole, UserStatus } from '../types/authTypes';
 
 export interface IUser extends Document {
-    id: number;
     fullName: string;
-    email: string;
+    email: Email;
+    phone?: Phone;
     password: string;
     role: UserRole;
     status: UserStatus;
-    profilePicture?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    phone?: string;
-    dateOfBirth?: Date;
-    skills: string[];
-    experience?: number;
-    isEmailVerified: boolean;
-    isPhoneVerified: boolean;
+
+    personalInfo: PersonalInfo;
+    qualification: Qualification;
+    location: Location;
+    socialProfile: SocialProfile;
+
+    lastLogin?: Date;
+    resetPasswordToken: string | null;
+    resetPasswordExpires: Date | null;
+
     createdAt: Date;
     updatedAt: Date;
     createdBy?: Types.ObjectId;
     updatedBy?: Types.ObjectId;
-    lastLogin?: Date;
-    resetPasswordToken: string | null;
-    resetPasswordExpires: Date | null;
-    requireWebcam: boolean;
-    requireMicrophone: boolean;
 }
 
-// user schema with default _id
+const emailSchema = new Schema<Email>(
+    {
+        email: { type: String, required: true, lowercase: true, trim: true },
+        isVerified: { type: Boolean, default: false }
+    },
+    { _id: false }
+);
+
+const phoneSchema = new Schema<Phone>(
+    {
+        phone: { type: String, required: true, trim: true },
+        isVerified: { type: Boolean, default: false }
+    },
+    { _id: false }
+);
+
+const personalInfoSchema = new Schema(
+    {
+        dateOfBirth: {
+            type: Date,
+            validate: {
+                validator: (value: Date) => !value || value <= new Date(),
+                message: 'DOB cannot be in the future',
+            },
+        },
+        profilePicture: String,
+        nickName: String,
+        gender: String,
+        portfolio: String,
+    },
+    { _id: false }
+);
+
+const educationSchema = new Schema(
+    {
+        institution: { type: String, required: true },
+        degree: { type: String, required: true },
+        fieldOfStudy: { type: String, required: true },
+        startDate: { type: Date, required: true },
+        endDate: { type: Date },
+        isCurrent: { type: Boolean, default: false },
+    },
+    { _id: false }
+);
+
+const workExperienceSchema = new Schema(
+    {
+        company: { type: String, required: true },
+        role: { type: String, required: true },
+        startDate: { type: Date, required: true },
+        endDate: { type: Date },
+        isCurrent: { type: Boolean, default: false },
+    },
+    { _id: false }
+);
+
+const qualificationSchema = new Schema(
+    {
+        skills: { type: [String], default: [] },
+        education: { type: [educationSchema], default: [] },
+        workExperience: { type: [workExperienceSchema], default: [] },
+        experience: { type: Number, min: 0, max: 60, default: 0 },
+    },
+    { _id: false }
+);
+
+const locationSchema = new Schema(
+    {
+        address: String,
+        city: String,
+        state: String,
+        country: String,
+    },
+    { _id: false }
+);
+
 const userSchema = new Schema<IUser>(
     {
-        id: {
-            type: Number,
-            unique: true,
-            index: true,
-        },
-        email: {
+        fullName: {
             type: String,
             required: true,
-            unique: true,
-            lowercase: true,
-            trim: true,
+            trim: true
+        },
+        email: {
+            type: emailSchema,
+            required: true
+        },
+        phone: {
+            type: phoneSchema,
+            required: true
         },
         password: {
             type: String,
@@ -65,42 +121,33 @@ const userSchema = new Schema<IUser>(
             minlength: 6,
             select: false,
         },
-        fullName: {
-            type: String,
-            required: true,
-            trim: true
-        },
         role: {
             type: String,
-            enum: UserRole,
+            enum: Object.values(UserRole),
             default: UserRole.USER,
         },
         status: {
             type: String,
-            enum: UserStatus,
+            enum: Object.values(UserStatus),
             default: UserStatus.ACTIVE,
         },
-        profilePicture: String,
-        phone: {
-            type: String,
+        personalInfo: {
+            type: personalInfoSchema,
+            default: () => ({}),
         },
-        dateOfBirth: Date,
-        country: String,
-        state: String,
-        city: String,
-        skills: {
-            type: [String],
-            default: [],
+        qualification: {
+            type: qualificationSchema,
+            default: () => ({}),
         },
-        isEmailVerified: {
-            type: Boolean,
-            default: false,
+        location: {
+            type: locationSchema,
+            default: () => ({}),
         },
-        isPhoneVerified: {
-            type: Boolean,
-            default: false,
+        socialProfile: {
+            type: Schema.Types.Mixed,
+            of: String,
+            default: () => ({})
         },
-        experience: Number,
         lastLogin: Date,
         resetPasswordToken: {
             type: String,
@@ -112,8 +159,6 @@ const userSchema = new Schema<IUser>(
             select: false,
             default: null,
         },
-        requireWebcam: { type: Boolean, default: true },
-        requireMicrophone: { type: Boolean, default: true },
         createdBy: {
             type: Schema.Types.ObjectId,
             ref: 'User'
@@ -126,11 +171,17 @@ const userSchema = new Schema<IUser>(
     { timestamps: true }
 );
 
-// Pre-save hook to generate userId
-userSchema.pre('save', async function () {
-    if (this.isNew && !this.id) {
-        this.id = await generateUniqueId('user');
+userSchema.index({ "contact.email.value": 1 }, { unique: true });
+userSchema.index(
+    { "contact.phone.value": 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            "contact.phone.value": { $exists: true, $ne: null }
+        }
     }
-});
+);
+userSchema.index({ role: 1, status: 1 });
+userSchema.index({ createdAt: -1 });
 
 export default mongoose.model<IUser>('User', userSchema);

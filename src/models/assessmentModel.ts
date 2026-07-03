@@ -1,9 +1,7 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { generateUniqueId } from '../utils/generateId';
 import { AssessmentDifficulty, AssessmentType, ILimit, IRecord } from '../types/assessmentTypes';
 
 export interface IAssessment extends Document {
-    id: number;
     title: string;
     description: string;
     type: AssessmentType[];
@@ -19,6 +17,8 @@ export interface IAssessment extends Document {
     isActive: boolean;
     isPublic: boolean;
     negativeMarking: boolean;
+    createdAt: Date;
+    updatedAt: Date;
 
     // Proctoring settings
     webcam: IRecord;
@@ -29,8 +29,6 @@ export interface IAssessment extends Document {
 
     createdBy: Types.ObjectId;
     updatedBy: Types.ObjectId;
-    createdAt: Date;
-    updatedAt: Date;
 }
 
 const limitSchema = new Schema<ILimit>(
@@ -63,11 +61,6 @@ const recordSchema = new Schema<IRecord>(
 
 const assessmentSchema = new Schema<IAssessment>(
     {
-        id: {
-            type: Number,
-            unique: true,
-            index: true,
-        },
         title: {
             type: String,
             required: true,
@@ -76,7 +69,8 @@ const assessmentSchema = new Schema<IAssessment>(
         },
         description: {
             type: String,
-            maxlength: 1000
+            required: true,
+            maxlength: 10000
         },
         type: {
             type: [String],
@@ -86,7 +80,7 @@ const assessmentSchema = new Schema<IAssessment>(
         difficulty: {
             type: String,
             enum: Object.values(AssessmentDifficulty),
-            default: AssessmentDifficulty.BEGINNER,
+            required: true,
         },
         durationInMinutes: {
             type: Number,
@@ -96,8 +90,8 @@ const assessmentSchema = new Schema<IAssessment>(
         },
         totalMarks: {
             type: Number,
-            default: 1,
-            min: 1
+            default: 0,
+            min: 0
         },
         passingMarks: {
             type: Number,
@@ -127,13 +121,16 @@ const assessmentSchema = new Schema<IAssessment>(
             type: Boolean,
             default: false
         },
+        negativeMarking: {
+            type: Boolean,
+            default: false
+        },
         startDate: Date,
         endDate: Date,
         tags: {
             type: [String],
-            default: [],
-            lowercase: true,
-            trim: true,
+            required: true,
+            validate: [(val: string[]) => val.length > 0, 'At least one tag required']
         },
         instructions: {
             type: String,
@@ -173,12 +170,5 @@ assessmentSchema.index({
 assessmentSchema.index({ isActive: 1, isPublic: 1 });
 assessmentSchema.index({ difficulty: 1 });
 assessmentSchema.index({ type: 1 });
-
-// Pre-save hook to generate userId
-assessmentSchema.pre('save', async function () {
-    if (this.isNew && !this.id) {
-        this.id = await generateUniqueId('assessment');
-    }
-});
 
 export default mongoose.model<IAssessment>('Assessment', assessmentSchema);

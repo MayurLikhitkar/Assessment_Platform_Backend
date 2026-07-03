@@ -107,17 +107,21 @@ export const createQuestionValidation = [
         .if(body('type').equals(QuestionType.MCQ))
         .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
         .withMessage('MCQ fields are required if the question type is MCQ'),
+    body('mcqFields.isMultiSelect').optional()
+        .if(body('type').equals(QuestionType.MCQ))
+        .isBoolean().withMessage('isMultiSelect must be a boolean').toBoolean(),
     body('mcqFields.options')
         .if(body('type').equals(QuestionType.MCQ))
         .isArray({ min: 2, max: 10 }).withMessage('There must be between 2 and 10 options')
-        .custom((options: IOption[]) => {
+        .custom((options: IOption[], { req }) => {
             if (!options) return true;
+            const isMultiSelect = req.body.mcqFields?.isMultiSelect ?? false;
             const correctCount = options.filter(opt => opt?.isCorrect).length;
             if (correctCount < 1) {
                 throw new Error('MCQ must have at least one correct answer');
             }
-            if (correctCount === options.length) {
-                throw new Error('MCQ must have at least one incorrect answer');
+            if (!isMultiSelect && correctCount !== 1) {
+                throw new Error('Only one option can be marked as correct for single-select MCQs');
             }
             const texts = new Set(options.map(o => o.text?.trim().toLowerCase()));
             if (texts.size !== options.length) {
@@ -134,9 +138,6 @@ export const createQuestionValidation = [
         .if(body('type').equals(QuestionType.MCQ))
         .isBoolean().withMessage('Option isCorrect must be a boolean')
         .toBoolean(),
-    body('mcqFields.isMultiSelect').optional()
-        .if(body('type').equals(QuestionType.MCQ))
-        .isBoolean().withMessage('isMultiSelect must be a boolean').toBoolean(),
 
     // Coding-specific fields
     body('codingFields')
@@ -170,7 +171,7 @@ export const createQuestionValidation = [
     body('codingFields.constraints')
         .optional()
         .if(body('type').equals(QuestionType.CODING))
-        .isArray({ min: 1 }).withMessage('At least one constraint is required'),
+        .isArray().withMessage('Constraints must be an array'),
     body('codingFields.constraints.*')
         .if(body('type').equals(QuestionType.CODING))
         .isString().withMessage('Each constraint must be a string')
@@ -192,14 +193,14 @@ export const createQuestionValidation = [
         .isIn(Object.values(DatabaseType))
         .withMessage('Database type must be one of: ' + Object.values(DatabaseType).join(', ')),
     body('queryFields.databaseSchema')
-        .optional()
+        .optional({ values: 'falsy' })
         .if(body('type').equals(QuestionType.QUERY))
         .isString().withMessage('Database schema must be a string')
         .isLength({ min: 10, max: 5000 }).withMessage('Schema must be at least 10 characters long and not exceed 5000 characters')
         .trim(),
     body('queryFields.sampleData')
+        .optional({ values: 'falsy' })
         .if(body('type').equals(QuestionType.QUERY))
-        .optional()
         .isString().withMessage('Sample data must be a string')
         .isLength({ max: 10000 }).withMessage('Expected query must not exceed 10000 characters')
         .trim(),
@@ -246,14 +247,19 @@ export const createQuestionValidation = [
         .toInt(),
     body('subjectiveFields.expectedKeywords')
         .if(body('type').equals(QuestionType.SUBJECTIVE))
-        .isArray().withMessage('Expected keywords must be an array'),
+        .isArray().withMessage('Expected keywords must be an array')
+        .custom((keywords: string[]) => {
+            const unique = new Set(keywords.map(t => t.toLowerCase()));
+            if (unique.size !== keywords.length) throw new Error('Duplicate keywords not allowed');
+            return true;
+        }),
     body('subjectiveFields.expectedKeywords.*')
         .if(body('type').equals(QuestionType.SUBJECTIVE))
         .isString().withMessage('Each keyword must be a string')
         .trim()
         .notEmpty().withMessage('Keywords cannot be empty strings'),
     body('subjectiveFields.sampleAnswer')
-        .optional()
+        .optional({ values: 'falsy' })
         .if(body('type').equals(QuestionType.SUBJECTIVE))
         .isString().withMessage('Sample answer must be a string')
         .trim()
@@ -347,18 +353,23 @@ export const updateQuestionValidation = [
         .if(body('type').equals(QuestionType.MCQ))
         .custom((val) => typeof val === 'object' && val !== null && !Array.isArray(val))
         .withMessage('MCQ fields are required if the question type is MCQ'),
+    body('mcqFields.isMultiSelect')
+        .optional()
+        .if(body('type').equals(QuestionType.MCQ))
+        .isBoolean().withMessage('isMultiSelect must be a boolean').toBoolean(),
     body('mcqFields.options')
         .optional()
         .if(body('type').equals(QuestionType.MCQ))
         .isArray({ min: 2, max: 10 }).withMessage('There must be between 2 and 10 options')
-        .custom((options: IOption[]) => {
+        .custom((options: IOption[], { req }) => {
             if (!options) return true;
+            const isMultiSelect = req.body.mcqFields?.isMultiSelect ?? false;
             const correctCount = options.filter(opt => opt?.isCorrect).length;
             if (correctCount < 1) {
                 throw new Error('MCQ must have at least one correct answer');
             }
-            if (correctCount === options.length) {
-                throw new Error('MCQ must have at least one incorrect answer');
+            if (!isMultiSelect && correctCount !== 1) {
+                throw new Error('Only one option can be marked as correct for single-select MCQs');
             }
             const texts = new Set(options.map(o => o.text?.trim().toLowerCase()));
             if (texts.size !== options.length) {
@@ -377,10 +388,6 @@ export const updateQuestionValidation = [
         .if(body('type').equals(QuestionType.MCQ))
         .isBoolean().withMessage('Option isCorrect must be a boolean')
         .toBoolean(),
-    body('mcqFields.isMultiSelect')
-        .optional()
-        .if(body('type').equals(QuestionType.MCQ))
-        .isBoolean().withMessage('isMultiSelect must be a boolean').toBoolean(),
 
     // Coding-specific fields
     body('codingFields')
@@ -420,7 +427,7 @@ export const updateQuestionValidation = [
     body('codingFields.constraints')
         .optional()
         .if(body('type').equals(QuestionType.CODING))
-        .isArray({ min: 1 }).withMessage('At least one constraint is required'),
+        .isArray().withMessage('Constraints must be an array'),
     body('codingFields.constraints.*')
         .optional()
         .if(body('type').equals(QuestionType.CODING))
@@ -445,13 +452,13 @@ export const updateQuestionValidation = [
         .isIn(Object.values(DatabaseType))
         .withMessage('Database type must be one of: ' + Object.values(DatabaseType).join(', ')),
     body('queryFields.databaseSchema')
-        .optional()
+        .optional({ values: 'falsy' })
         .if(body('type').equals(QuestionType.QUERY))
         .isString().withMessage('Database schema must be a string')
         .isLength({ min: 10, max: 5000 }).withMessage('Schema must be at least 10 characters long and not exceed 5000 characters')
         .trim(),
     body('queryFields.sampleData')
-        .optional()
+        .optional({ values: 'falsy' })
         .if(body('type').equals(QuestionType.QUERY))
         .isString().withMessage('Sample data must be a string')
         .isLength({ max: 10000 }).withMessage('Expected query must not exceed 10000 characters')
@@ -505,7 +512,12 @@ export const updateQuestionValidation = [
     body('subjectiveFields.expectedKeywords')
         .optional()
         .if(body('type').equals(QuestionType.SUBJECTIVE))
-        .isArray().withMessage('Expected keywords must be an array'),
+        .isArray().withMessage('Expected keywords must be an array')
+        .custom((keywords: string[]) => {
+            const unique = new Set(keywords.map(t => t.toLowerCase()));
+            if (unique.size !== keywords.length) throw new Error('Duplicate keywords not allowed');
+            return true;
+        }),
     body('subjectiveFields.expectedKeywords.*')
         .optional()
         .if(body('type').equals(QuestionType.SUBJECTIVE))
@@ -513,7 +525,7 @@ export const updateQuestionValidation = [
         .trim()
         .notEmpty().withMessage('Keywords cannot be empty strings'),
     body('subjectiveFields.sampleAnswer')
-        .optional()
+        .optional({ values: 'falsy' })
         .if(body('type').equals(QuestionType.SUBJECTIVE))
         .isString().withMessage('Sample answer must be a string')
         .trim()

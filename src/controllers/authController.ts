@@ -1,9 +1,9 @@
 import { hashPassword, comparePassword } from '../utils/bcrypt';
 import { Request, Response } from 'express';
-import userModel, { IUser, UserRole } from '../models/userModel';
+import userModel, { IUser } from '../models/userModel';
 import { generateTokens, verifyToken } from '../utils/jwt';
 import { HttpStatus, Message } from '../utils/constants';
-import { CustomRequest, ChangePasswordRequest } from '../types/authTypes';
+import { CustomRequest, ChangePasswordRequest, UserRole } from '../types/authTypes';
 import { errorResponse, successResponse } from '../utils/responseHandler';
 
 export const register = async (req: Request, res: Response) => {
