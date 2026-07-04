@@ -1,10 +1,12 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { Email, Location, PersonalInfo, Phone, Qualification, SocialProfile, UserRole, UserStatus } from '../types/authTypes';
+import { Education, Gender, Location, PersonalInfo, Qualification, SocialProfile, UserRole, UserStatus, WorkExperience } from '../types/authTypes';
 
 export interface IUser extends Document {
     fullName: string;
-    email: Email;
-    phone?: Phone;
+    email: string;
+    phone?: string;
+    isEmailVerified: boolean;
+    isPhoneVerified: boolean;
     password: string;
     role: UserRole;
     status: UserStatus;
@@ -24,23 +26,7 @@ export interface IUser extends Document {
     updatedBy?: Types.ObjectId;
 }
 
-const emailSchema = new Schema<Email>(
-    {
-        email: { type: String, required: true, lowercase: true, trim: true },
-        isVerified: { type: Boolean, default: false }
-    },
-    { _id: false }
-);
-
-const phoneSchema = new Schema<Phone>(
-    {
-        phone: { type: String, required: true, trim: true },
-        isVerified: { type: Boolean, default: false }
-    },
-    { _id: false }
-);
-
-const personalInfoSchema = new Schema(
+const personalInfoSchema = new Schema<PersonalInfo>(
     {
         dateOfBirth: {
             type: Date,
@@ -51,13 +37,12 @@ const personalInfoSchema = new Schema(
         },
         profilePicture: String,
         nickName: String,
-        gender: String,
-        portfolio: String,
+        gender: { type: String, enum: Object.values(Gender) },
     },
     { _id: false }
 );
 
-const educationSchema = new Schema(
+const educationSchema = new Schema<Education>(
     {
         institution: { type: String, required: true },
         degree: { type: String, required: true },
@@ -69,7 +54,7 @@ const educationSchema = new Schema(
     { _id: false }
 );
 
-const workExperienceSchema = new Schema(
+const workExperienceSchema = new Schema<WorkExperience>(
     {
         company: { type: String, required: true },
         role: { type: String, required: true },
@@ -80,22 +65,34 @@ const workExperienceSchema = new Schema(
     { _id: false }
 );
 
-const qualificationSchema = new Schema(
+const qualificationSchema = new Schema<Qualification>(
     {
         skills: { type: [String], default: [] },
+        languages: { type: [String], default: [] },
         education: { type: [educationSchema], default: [] },
         workExperience: { type: [workExperienceSchema], default: [] },
-        experience: { type: Number, min: 0, max: 60, default: 0 },
+        totalExperience: { type: Number, min: 0, max: 60, default: 0 },
     },
     { _id: false }
 );
 
-const locationSchema = new Schema(
+const locationSchema = new Schema<Location>(
     {
         address: String,
         city: String,
         state: String,
         country: String,
+    },
+    { _id: false }
+);
+
+const socialProfileSchema = new Schema<SocialProfile>(
+    {
+        linkedin: String,
+        github: String,
+        twitter: String,
+        portfolio: String,
+        website: String,
     },
     { _id: false }
 );
@@ -108,17 +105,28 @@ const userSchema = new Schema<IUser>(
             trim: true
         },
         email: {
-            type: emailSchema,
-            required: true
+            type: String,
+            unique: true,
+            required: true,
+            lowercase: true,
+            trim: true
         },
         phone: {
-            type: phoneSchema,
-            required: true
+            type: String,
+            trim: true,
+            select: false
+        },
+        isEmailVerified: {
+            type: Boolean,
+            default: false,
+        },
+        isPhoneVerified: {
+            type: Boolean,
+            default: false,
         },
         password: {
             type: String,
             required: true,
-            minlength: 6,
             select: false,
         },
         role: {
@@ -131,6 +139,10 @@ const userSchema = new Schema<IUser>(
             enum: Object.values(UserStatus),
             default: UserStatus.ACTIVE,
         },
+        socialProfile: {
+            type: socialProfileSchema,
+            default: () => ({}),
+        },
         personalInfo: {
             type: personalInfoSchema,
             default: () => ({}),
@@ -142,11 +154,6 @@ const userSchema = new Schema<IUser>(
         location: {
             type: locationSchema,
             default: () => ({}),
-        },
-        socialProfile: {
-            type: Schema.Types.Mixed,
-            of: String,
-            default: () => ({})
         },
         lastLogin: Date,
         resetPasswordToken: {
@@ -171,14 +178,11 @@ const userSchema = new Schema<IUser>(
     { timestamps: true }
 );
 
-userSchema.index({ "contact.email.value": 1 }, { unique: true });
 userSchema.index(
-    { "contact.phone.value": 1 },
+    { phone: 1 },
     {
         unique: true,
-        partialFilterExpression: {
-            "contact.phone.value": { $exists: true, $ne: null }
-        }
+        partialFilterExpression: { phone: { $exists: true, $ne: null } }
     }
 );
 userSchema.index({ role: 1, status: 1 });

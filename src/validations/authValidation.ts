@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
 import validate from './validate';
-import { UserRole } from '../models/userModel';
+import { UserRole } from '../types/authTypes';
 
 export const registerValidation = [
     body('email')

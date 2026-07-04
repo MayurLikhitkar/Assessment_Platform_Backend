@@ -3,8 +3,8 @@ import { authenticate, authorize } from '../middleware/authMiddleware';
 import { createAssessment, deleteAssessment, getAssessmentById, getAssessmentQuestions, getAssessments, getUserAssessments, startAssessment, updateAssessment } from '../controllers/assessmentController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { createAssessmentValidation, getAssessmentByIdValidation, getAssessmentsValidation, updateAssessmentValidation } from '../validations/assessmentValidations';
-import { UserRole } from '../models/userModel';
 import validatePayload from '../middleware/validatePayload';
+import { UserRole } from '../types/authTypes';
 
 const router = express.Router();
 

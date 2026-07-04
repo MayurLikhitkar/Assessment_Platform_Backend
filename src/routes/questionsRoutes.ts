@@ -16,7 +16,7 @@ import {
     updateQuestionValidation,
     deleteQuestionValidation,
 } from '../validations/questionValidations';
-import { UserRole } from '../models/userModel';
+import { UserRole } from '../types/authTypes';
 
 const router = express.Router();
 

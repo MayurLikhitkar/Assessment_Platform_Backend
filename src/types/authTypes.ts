@@ -16,22 +16,17 @@ export enum UserStatus {
     BANNED = 'banned',
 }
 
-export interface Email {
-    email: string;
-    isVerified: boolean;
-}
-
-export interface Phone {
-    phone: string;
-    isVerified: boolean;
+export enum Gender {
+    MALE = 'male',
+    FEMALE = 'female',
+    OTHER = 'other',
 }
 
 export interface PersonalInfo {
     dateOfBirth?: Date;
     profilePicture?: string;
     nickName?: string;
-    gender?: string;
-    portfolio?: string;
+    gender?: Gender;
 }
 
 export interface Education {
@@ -53,9 +48,10 @@ export interface WorkExperience {
 
 export interface Qualification {
     skills: string[];
+    languages: string[];
     education: Education[];
     workExperience: WorkExperience[];
-    experience: number;
+    totalExperience: number;
 }
 
 export interface Location {
@@ -65,7 +61,13 @@ export interface Location {
     country?: string;
 }
 
-export type SocialProfile = Record<string, string>
+export interface SocialProfile {
+    linkedin?: string;
+    github?: string;
+    twitter?: string;
+    portfolio?: string;
+    website?: string;
+}
 
 export interface TokenPayload {
     _id: Types.ObjectId;

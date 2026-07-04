@@ -1,15 +1,15 @@
 import { Response } from 'express';
 import assessmentModel, { IAssessment } from '../models/assessmentModel';
 import { GetAssessmentQuery } from '../types/assessmentTypes';
-import { isValidObjectId, QueryFilter, startSession, Types } from 'mongoose';
+import { QueryFilter, startSession, Types } from 'mongoose';
 import { HttpStatus } from '../utils/constants';
 import { errorResponse, successResponse } from '../utils/responseHandler';
-import { CustomRequest } from '../types/authTypes';
+import { CustomRequest, UserRole } from '../types/authTypes';
 import logger from '../utils/logger';
 import userAssessmentModel from '../models/userAssessmentModel';
 import { UserAssessmentStatus } from '../types/userAssessmentTypes';
 import questionModel, { IQuestion } from '../models/questionModel';
-import userModel, { UserRole } from '../models/userModel';
+import userModel from '../models/userModel';
 
 /**
  * Get assessments with filtering, pagination, and search
@@ -17,6 +17,93 @@ import userModel, { UserRole } from '../models/userModel';
  * @access Private
  */
 export const getAssessments = async (req: CustomRequest, res: Response) => {
+    const { page = 1, limit = 10, search, difficulty, type, isActive, isPublic, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query as unknown as GetAssessmentQuery;
+
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const filter: QueryFilter<IAssessment> = {};
+
+    if (search) {
+        filter.$text = { $search: search };
+    }
+
+    if (difficulty) {
+        filter.difficulty = difficulty;
+    }
+
+    if (type) {
+        filter.type = type;
+    }
+
+    if (isActive !== undefined) {
+        filter.isActive = isActive;
+    }
+
+    if (isPublic !== undefined) {
+        filter.isPublic = isPublic;
+    }
+
+    if (startDate) {
+        filter.startDate = { $gte: new Date(startDate) };
+    }
+    if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.endDate = { $lte: endDateTime };
+    }
+
+    // const dateRange = dateRangeFilter(startDate, endDate);
+    // if (dateRange) {
+    //     filter.createdAt = dateRange;
+    // }
+
+    const sortOptions: Record<string, 1 | -1> = {
+        [sortBy]: sortOrder === 'asc' ? 1 : -1
+    };
+
+    const [assessments, total] = await Promise.all([
+        assessmentModel
+            .find(filter)
+            .select('-__v')
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(limitNumber)
+            .lean()
+            .exec(),
+        assessmentModel.countDocuments(filter).exec()
+    ]);
+
+    const totalPages = Math.ceil(total / limitNumber);
+    const hasNextPage = pageNumber < totalPages;
+    const hasPrevPage = pageNumber > 1;
+
+    return res.status(HttpStatus.OK).json(successResponse('Assessments fetched successfully', assessments,
+        {
+            pagination: {
+                total,
+                page: pageNumber,
+                limit: limitNumber,
+                totalPages,
+                hasNextPage,
+                hasPrevPage
+            },
+            filters: {
+                search,
+                difficulty,
+                type,
+                isActive,
+                isPublic,
+                startDate,
+                endDate
+            }
+        }
+    )
+    );
+};
+
+export const getAssessmentsForUser = async (req: CustomRequest, res: Response) => {
     const { page = 1, limit = 10, search, difficulty, type, isActive, isPublic, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query as unknown as GetAssessmentQuery;
 
     const pageNumber = Number(page);

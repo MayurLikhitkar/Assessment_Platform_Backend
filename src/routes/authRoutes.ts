@@ -4,7 +4,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { loginValidation, addUserValidation, registerValidation } from '../validations/authValidation';
 import { changePassword, forgotPassword, getProfile, getUsers, login, logout, refreshToken, register, resetPassword, updateProfile } from '../controllers/authController';
 import validatePayload from '../middleware/validatePayload';
-import { UserRole } from '../models/userModel';
+import { UserRole } from '../types/authTypes';
 
 const router = express.Router();
 

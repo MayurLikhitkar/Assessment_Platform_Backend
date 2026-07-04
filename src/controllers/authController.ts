@@ -109,7 +109,7 @@ export const getProfile = async (req: CustomRequest, res: Response) => {
 };
 
 export const updateProfile = async (req: CustomRequest, res: Response) => {
-    const { fullName, phone, skills, experience } = req.body as IUser;
+    const { fullName, phone, personalInfo, qualification, location, socialProfile } = req.body as IUser;
     const { email } = req.user!;
 
     const foundUser = await userModel.findOne({ email });
@@ -122,8 +122,10 @@ export const updateProfile = async (req: CustomRequest, res: Response) => {
         {
             fullName,
             phone,
-            skills,
-            experience,
+            personalInfo,
+            qualification,
+            location,
+            socialProfile,
             updatedAt: new Date(),
         },
         { new: true, runValidators: true }

@@ -262,7 +262,7 @@ export const updateQuestion = async (req: CustomRequest, res: Response) => {
 export const deleteQuestion = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
 
-    const question = await questionModel.findOne({ id: req.params.id });
+    const question = await questionModel.findById(req.params.id);
 
     if (!question) {
         return res.status(HttpStatus.NOT_FOUND).json(
