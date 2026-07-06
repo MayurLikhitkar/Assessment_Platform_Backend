@@ -46,7 +46,7 @@ export const loginValidation = [
     validate
 ];
 
-export const addUserValidation = [
+export const createUserValidation = [
     body('email')
         .trim()
         .isEmail().withMessage('Please provide a valid email address')

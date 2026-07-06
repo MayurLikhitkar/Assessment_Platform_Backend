@@ -226,19 +226,7 @@ export const updateAssessmentValidation = [
         }),
     body('questions.*').optional().trim().isMongoId().withMessage('Each question must be a valid MongoDB ObjectId'),
 
-    body('startDate')
-        .optional()
-        .isISO8601().withMessage('Start date must be a valid ISO 8601 date')
-        .custom((value) => {
-            const now = new Date();
-            now.setSeconds(0, 0);
-
-            if (new Date(value) < now) {
-                throw new Error('Start date cannot be in the past');
-            }
-            return true;
-        })
-        .toDate(),
+    body('startDate').optional().isISO8601().withMessage('Start date must be a valid ISO 8601 date').toDate(),
 
     body('endDate')
         .optional()

@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { generateUniqueId } from '../utils/generateId';
 import { UserAssessmentStatus, ViolationType } from '../types/userAssessmentTypes';
 import { QuestionType } from '../types/questionTypes';
 
@@ -15,14 +14,13 @@ export interface IUserAssessmentAnswer {
 }
 
 export interface IUserAssessment extends Document {
-    id: number;
     userId: Types.ObjectId;
     assessmentId: Types.ObjectId;
     status: UserAssessmentStatus;
     startedAt?: Date;
     completedAt?: Date;
     timeSpentInSeconds: number;
-    score: number;
+    marks: number;
     totalMarks: number;
     answers: IUserAssessmentAnswer[];
 
@@ -44,6 +42,7 @@ export interface IUserAssessment extends Document {
     evaluationDate?: Date;
     feedback?: string;
     isPassed: boolean;
+    
     createdBy: Types.ObjectId;
     updatedBy: Types.ObjectId;
     createdAt: Date;
@@ -88,7 +87,6 @@ const ViolationSchema = new Schema({
 
 const userAssessmentSchema = new Schema<IUserAssessment>(
     {
-        id: { type: Number, unique: true, index: true },
         userId: {
             type: Schema.Types.ObjectId,
             required: true,
@@ -112,7 +110,7 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
             type: Number,
             default: 0 // in seconds
         },
-        score: {
+        marks: {
             type: Number,
             min: 0,
             default: 0,
@@ -153,11 +151,5 @@ const userAssessmentSchema = new Schema<IUserAssessment>(
     { timestamps: true }
 );
 
-// Pre-save hook to generate userId
-userAssessmentSchema.pre('save', async function () {
-    if (this.isNew && !this.id) {
-        this.id = await generateUniqueId('userAssessment');
-    }
-});
 
 export default mongoose.model<IUserAssessment>('UserAssessment', userAssessmentSchema);

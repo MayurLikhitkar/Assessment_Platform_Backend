@@ -104,13 +104,13 @@ export const getAssessments = async (req: CustomRequest, res: Response) => {
 };
 
 export const getAssessmentsForUser = async (req: CustomRequest, res: Response) => {
-    const { page = 1, limit = 10, search, difficulty, type, isActive, isPublic, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query as unknown as GetAssessmentQuery;
+    const { page = 1, limit = 10, search, difficulty, type, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query as unknown as GetAssessmentQuery;
 
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
 
-    const filter: QueryFilter<IAssessment> = {};
+    const filter: QueryFilter<IAssessment> = { isActive: true, isPublic: true, 'questions.0': { $exists: true } };
 
     if (search) {
         filter.$text = { $search: search };
@@ -124,27 +124,19 @@ export const getAssessmentsForUser = async (req: CustomRequest, res: Response) =
         filter.type = type;
     }
 
-    if (isActive !== undefined) {
-        filter.isActive = isActive;
-    }
-
-    if (isPublic !== undefined) {
-        filter.isPublic = isPublic;
-    }
-
     if (startDate) {
-        filter.startDate = { $gte: new Date(startDate) };
+        const start = new Date(startDate);
+
+        filter.$or = [
+            { startDate: { $gte: start } },
+            { startDate: { $exists: false } }
+        ];
     }
     if (endDate) {
         const endDateTime = new Date(endDate);
         endDateTime.setHours(23, 59, 59, 999);
         filter.endDate = { $lte: endDateTime };
     }
-
-    // const dateRange = dateRangeFilter(startDate, endDate);
-    // if (dateRange) {
-    //     filter.createdAt = dateRange;
-    // }
 
     const sortOptions: Record<string, 1 | -1> = {
         [sortBy]: sortOrder === 'asc' ? 1 : -1
@@ -180,8 +172,6 @@ export const getAssessmentsForUser = async (req: CustomRequest, res: Response) =
                 search,
                 difficulty,
                 type,
-                isActive,
-                isPublic,
                 startDate,
                 endDate
             }
@@ -189,6 +179,7 @@ export const getAssessmentsForUser = async (req: CustomRequest, res: Response) =
     )
     );
 };
+
 
 export const getAssessmentQuestions = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
@@ -218,6 +209,28 @@ export const getAssessmentQuestions = async (req: CustomRequest, res: Response) 
 export const getAssessmentById = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
     const assessment = await assessmentModel.findById(id).lean().exec();
+
+    if (!assessment) {
+        return res.status(HttpStatus.NOT_FOUND).json(errorResponse('Assessment not found', 'Assessment not found'));
+    }
+
+    // Check if user has permission to view (if private)
+    // if (!assessment.isPublic && assessment.createdBy?.toString() !== req.user?.userId) {
+    //     // Check if user has admin role or specific permissions
+    //     const hasPermission = req.user?.role === 'admin' || req.user?.role === 'instructor';
+    //     if (!hasPermission) {
+    //         return res.status(HttpStatus.FORBIDDEN).json(errorResponse('You do not have permission to view this assessment', 'Only two roles can view private assessments: admin and instructor'));
+    //     }
+    // }
+
+    return res.status(HttpStatus.OK).json(
+        successResponse('Assessment fetched successfully', assessment)
+    );
+};
+
+export const getAssessmentByIdForUser = async (req: CustomRequest, res: Response) => {
+    const { id } = req.params;
+    const assessment = await assessmentModel.findOne({ _id: id, isActive: true, isPublic: true, 'questions.0': { $exists: true } }).lean().exec();
 
     if (!assessment) {
         return res.status(HttpStatus.NOT_FOUND).json(errorResponse('Assessment not found', 'Assessment not found'));
@@ -430,42 +443,92 @@ export const getUserAssessments = async (req: CustomRequest, res: Response) => {
 
 export const startAssessment = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
+    const assessmentId = req.params.id;
 
-    const assessment = await assessmentModel.findById({
-        _id: req.params.id,
+    const assessment = await assessmentModel.findOne({
+        _id: assessmentId,
         isActive: true,
-    });
+        'questions.0': { $exists: true }
+    }).lean();
 
     if (!assessment) {
         return res.status(HttpStatus.NOT_FOUND).json(
-            errorResponse('Assessment not found', 'No assessment found with the given ID')
+            errorResponse('Assessment not found', 'Invalid or inactive assessment')
+        );
+    }
+
+    const now = new Date();
+    if (assessment.startDate && assessment.startDate > now) {
+        return res.status(HttpStatus.BAD_REQUEST).json(
+            errorResponse('Assessment not open yet', `This assessment starts at ${assessment.startDate}`)
+        );
+    }
+    if (assessment.endDate && assessment.endDate < now) {
+        return res.status(HttpStatus.BAD_REQUEST).json(
+            errorResponse('Assessment expired', 'This assessment is no longer available')
+        );
+    }
+
+    const existingUserAssessment = await userAssessmentModel.findOne({
+        userId,
+        assessmentId,
+    });
+
+    if (!assessment.isPublic && !existingUserAssessment) {
+        return res.status(HttpStatus.FORBIDDEN).json(
+            errorResponse('Access denied', 'You are not assigned to this assessment')
         );
     }
 
     // Check if user already has an assessment in progress
-    const existingUserAssessment = await userAssessmentModel.findOne({
-        userId: userId,
-        assessmentId: assessment._id,
-        status: { $in: [UserAssessmentStatus.COMPLETED, UserAssessmentStatus.EXPIRED, UserAssessmentStatus.TERMINATED] },
-    });
-
     if (existingUserAssessment) {
-        return res.status(HttpStatus.BAD_REQUEST).json((
-            errorResponse('Assessment already done', 'Assessment is completed, expired or terminated')
-        ));
+        if (
+            existingUserAssessment.status === UserAssessmentStatus.COMPLETED ||
+            existingUserAssessment.status === UserAssessmentStatus.EXPIRED ||
+            existingUserAssessment.status === UserAssessmentStatus.TERMINATED
+        ) {
+            return res.status(HttpStatus.BAD_REQUEST).json(
+                errorResponse('Assessment already done', 'Assessment is completed, expired or terminated')
+            );
+        }
+
+        if (existingUserAssessment.status === UserAssessmentStatus.IN_PROGRESS) {
+            return res.status(HttpStatus.OK).json(
+                successResponse('Resuming the assessment from where you left off...', existingUserAssessment)
+            );
+        }
+
+        const startedUserAssessment = await userAssessmentModel.findOneAndUpdate(
+            {
+                _id: existingUserAssessment._id,
+                status: UserAssessmentStatus.ASSIGNED, // guard: only transition if still ASSIGNED
+            },
+            {
+                $set: {
+                    status: UserAssessmentStatus.IN_PROGRESS,
+                    startedAt: new Date(),
+                    totalMarks: assessment.totalMarks,
+                },
+            },
+            { new: true }
+        );
+
+        if (startedUserAssessment) {
+            return res.status(HttpStatus.OK).json(successResponse('Assessment started successfully', startedUserAssessment));
+        }
     }
 
     // Create user assessment
-    const userAssessment = new userAssessmentModel({
-        userId: userId,
-        assessmentId: assessment._id,
+    const userAssessment = await userAssessmentModel.create({
+        userId,
+        assessmentId,
         status: UserAssessmentStatus.IN_PROGRESS,
-        startedAt: new Date(),
+        startedAt: now,
         totalMarks: assessment.totalMarks,
         answers: [],
+        createdBy: userId,
+        updatedBy: userId
     });
-
-    await userAssessment.save();
 
     // Create session
     // const session = new Session({

@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/authMiddleware';
 import { asyncHandler } from '../utils/asyncHandler';
-import { loginValidation, addUserValidation, registerValidation } from '../validations/authValidation';
+import { loginValidation, createUserValidation, registerValidation } from '../validations/authValidation';
 import { changePassword, forgotPassword, getProfile, getUsers, login, logout, refreshToken, register, resetPassword, updateProfile } from '../controllers/authController';
 import validatePayload from '../middleware/validatePayload';
 import { UserRole } from '../types/authTypes';
@@ -25,7 +25,7 @@ router.put('/change-password', asyncHandler(changePassword));
 
 // Admin routes
 router.get('/users', authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN), asyncHandler(getUsers));
-router.post('/addUser', authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN), addUserValidation, asyncHandler(register));
+router.post('/addUser', authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN), createUserValidation, asyncHandler(register));
 
 
 export default router;

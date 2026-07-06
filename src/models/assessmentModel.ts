@@ -17,8 +17,7 @@ export interface IAssessment extends Document {
     isActive: boolean;
     isPublic: boolean;
     negativeMarking: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    maxAttempts: number;
 
     // Proctoring settings
     webcam: IRecord;
@@ -27,6 +26,8 @@ export interface IAssessment extends Document {
     tabSwitch: ILimit;
     fullscreenExit: ILimit;
 
+    createdAt: Date;
+    updatedAt: Date;
     createdBy: Types.ObjectId;
     updatedBy: Types.ObjectId;
 }
@@ -39,6 +40,7 @@ const limitSchema = new Schema<ILimit>(
         },
         max: {
             type: Number,
+            default: 1,
             min: 0,
         },
     },
@@ -124,6 +126,11 @@ const assessmentSchema = new Schema<IAssessment>(
         negativeMarking: {
             type: Boolean,
             default: false
+        },
+        maxAttempts: {
+            type: Number,
+            default: 1,
+            min: 1
         },
         startDate: Date,
         endDate: Date,
