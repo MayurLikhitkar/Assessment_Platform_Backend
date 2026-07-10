@@ -71,6 +71,7 @@ export const createAssessmentValidation = [
             }
             return true;
         }).toInt(),
+    body('maxAttempts').optional().isInt({ min: 1 }).withMessage('Maximum attempts must be at least 1').toInt(),
     body('questions').optional().isArray().withMessage('Questions must be an array')
         .custom((questions: string[]) => {
             const unique = new Set(questions.map(t => t.toString()));
@@ -208,6 +209,7 @@ export const updateAssessmentValidation = [
         .isInt({ min: 5, max: 300 }).withMessage('Duration must be between 5 and 300 minutes')
         .toInt(),
 
+    body('maxAttempts').optional().isInt({ min: 1 }).withMessage('Maximum attempts must be at least 1').toInt(),
     body('totalMarks').optional().isInt({ min: 0 }).withMessage('Total marks must be greater than or equal to 0').toInt(),
     body('passingMarks')
         .optional()

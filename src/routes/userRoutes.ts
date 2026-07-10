@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/authMiddleware';
-import { getAssessmentByIdForUser, getAssessmentQuestions, getAssessmentsForUser, getUserAssessments, startAssessment } from '../controllers/assessmentController';
+import { getAssessmentByIdForUser, getAssessmentQuestions, getAssessmentsForUser, getUserAssessment, getUserAssessments, startAssessment } from '../controllers/assessmentController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { getAssessmentByIdValidation, getAssessmentsValidation, } from '../validations/assessmentValidations';
 import validatePayload from '../middleware/validatePayload';
@@ -21,7 +21,9 @@ router.post('/assessments/:id/start', authenticate, startAssessment);
 // router.post('/assessments/:id/answer', authenticate, submitAnswer);
 // router.post('/assessments/:id/complete', authenticate, completeAssessment);
 
-router.get('/:userId', asyncHandler(getUserAssessments));
+router.get('/:userId/assessments', asyncHandler(getUserAssessments));
+router.get('/:userId/assessment/:assessId', asyncHandler(getUserAssessment));
+router.put('/:userId/assessment/:assessId', asyncHandler(getUserAssessment));
 
 router.get('/assessments/:id/questions', getAssessmentByIdValidation, asyncHandler(getAssessmentQuestions));
 

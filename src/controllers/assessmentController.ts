@@ -441,6 +441,30 @@ export const getUserAssessments = async (req: CustomRequest, res: Response) => {
     );
 };
 
+export const getUserAssessment = async (req: CustomRequest, res: Response) => {
+    const { userId, assessId } = req.params;
+
+    // Permission check: users can only view their own, admins can view any
+    const isOwnUser = String(req.user!._id) === userId;
+    const isAdmin = req.user!.role === UserRole.ADMIN || req.user!.role === UserRole.SUPER_ADMIN;
+
+    if (!isOwnUser && !isAdmin) {
+        return res.status(HttpStatus.FORBIDDEN).json(
+            errorResponse('Forbidden', 'You do not have permission to view these assessment')
+        );
+    }
+
+    const assessments = await userAssessmentModel
+        .findOne({ userId, assessmentId: assessId })
+        .select('-__v')
+        .lean()
+        .exec();
+
+    return res.status(HttpStatus.OK).json(
+        successResponse('User assessments fetched successfully', assessments)
+    );
+};
+
 export const startAssessment = async (req: CustomRequest, res: Response) => {
     const { _id: userId } = req.user!;
     const assessmentId = req.params.id;
