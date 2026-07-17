@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { SALT_ROUNDS } from '../config/envConfig';
 
 export const hashPassword = async (password: string): Promise<string> => {

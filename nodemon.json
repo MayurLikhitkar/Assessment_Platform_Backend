@@ -2,6 +2,11 @@
     "watch": [
         "src"
     ],
-    "ext": "ts",
-    "exec": "ts-node src/index.ts"
+    "ext": "ts,json",
+    "ignore": [
+        "node_modules"
+    ],
+    "exec": "ts-node src/index.ts",
+    "legacyWatch": true,
+    "delay": 300
 }
